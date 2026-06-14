@@ -76,9 +76,17 @@ class AuthRepository {
 
   Future<UserModel?> getCachedUser() async {
     token ??= await storage.read(key: 'access_token');
+    final activeId = await storage.read(key: 'user_id');
+    if (activeId == null) return null;
+    
     try {
       final db = await DbHelper.database;
-      final maps = await db.query('users', limit: 1);
+      final maps = await db.query(
+        'users',
+        where: 'id = ?',
+        whereArgs: [activeId],
+        limit: 1,
+      );
       if (maps.isNotEmpty) {
         return UserModel.fromJson(maps.first);
       }

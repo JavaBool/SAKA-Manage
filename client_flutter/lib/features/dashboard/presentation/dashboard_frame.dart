@@ -215,6 +215,13 @@ class DashboardFrame extends ConsumerWidget {
                     ),
                   ],
                 ),
+                if (inDrawer) ...[
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: ServerSwitcherWidget(),
+                  ),
+                ],
               ],
             ),
           );
@@ -234,17 +241,8 @@ class DashboardFrame extends ConsumerWidget {
               width: 240,
               child: buildSidebarContent(inDrawer: true),
             ),
-            body: Stack(
-              children: [
-                SafeArea(
-                  child: activeView,
-                ),
-                Positioned(
-                  bottom: 16,
-                  right: 16,
-                  child: const ServerSwitcherWidget(),
-                ),
-              ],
+            body: SafeArea(
+              child: activeView,
             ),
           );
         }
