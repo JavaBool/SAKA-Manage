@@ -9,8 +9,50 @@ from flask_jwt_extended import create_access_token
 
 admin_auth_bp = Blueprint('admin_auth', __name__)
 
-# In-memory store for OTPs: { email: { 'otp': '123456', 'expires': timestamp } }
-otp_store = {}
+# Database-backed store for OTPs to work across multiple Gunicorn workers
+class DatabaseOTPStore:
+    def get(self, email):
+        from backend.models.models import AdminOTP
+        entry = AdminOTP.query.filter_by(email=email).first()
+        if entry:
+            return {
+                'otp': entry.otp,
+                'expires': entry.expires_at
+            }
+        return None
+
+    def __setitem__(self, email, value):
+        from backend.models.models import AdminOTP
+        from backend.models.database import db
+        # Check if exists, update or insert
+        entry = AdminOTP.query.filter_by(email=email).first()
+        if entry:
+            entry.otp = value['otp']
+            entry.expires_at = value['expires']
+        else:
+            entry = AdminOTP(
+                email=email,
+                otp=value['otp'],
+                expires_at=value['expires']
+            )
+            db.session.add(entry)
+        db.session.commit()
+
+    def pop(self, email, default=None):
+        from backend.models.models import AdminOTP
+        from backend.models.database import db
+        entry = AdminOTP.query.filter_by(email=email).first()
+        if entry:
+            val = {
+                'otp': entry.otp,
+                'expires': entry.expires_at
+            }
+            db.session.delete(entry)
+            db.session.commit()
+            return val
+        return default
+
+otp_store = DatabaseOTPStore()
 
 @admin_auth_bp.route('/login', methods=['POST'])
 def admin_login():

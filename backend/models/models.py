@@ -243,3 +243,16 @@ class AuditLog(db.Model):
             'ip_address': self.ip_address,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+class AdminOTP(db.Model):
+    __tablename__ = 'admin_otps'
+    email = db.Column(db.String(120), primary_key=True)
+    otp = db.Column(db.String(6), nullable=False)
+    expires_at = db.Column(db.Float, nullable=False)
+
+    def to_dict(self):
+        return {
+            'email': self.email,
+            'otp': self.otp,
+            'expires_at': self.expires_at
+        }
