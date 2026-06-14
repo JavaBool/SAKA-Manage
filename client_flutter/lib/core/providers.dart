@@ -12,7 +12,13 @@ import 'package:client_flutter/features/notifications/repository/notifications_r
 import 'package:client_flutter/core/sync_controller.dart';
 
 // Core Providers
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((Ref ref) {
+  final client = ApiClient();
+  client.onUnauthorized = () {
+    ref.read(authStateProvider.notifier).logout();
+  };
+  return client;
+});
 final storageProvider = Provider<FlutterSecureStorage>((ref) => const FlutterSecureStorage());
 
 // Sync Controller
@@ -21,23 +27,23 @@ final syncControllerProvider = Provider<SyncController>((ref) {
 });
 
 // Repositories
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
+final Provider<AuthRepository> authRepositoryProvider = Provider<AuthRepository>((Ref ref) {
   return AuthRepository(ref.watch(apiClientProvider));
 });
 
-final contactsRepositoryProvider = Provider<ContactsRepository>((ref) {
+final Provider<ContactsRepository> contactsRepositoryProvider = Provider<ContactsRepository>((Ref ref) {
   return ContactsRepository(ref.watch(apiClientProvider));
 });
 
-final productsRepositoryProvider = Provider<ProductsRepository>((ref) {
+final Provider<ProductsRepository> productsRepositoryProvider = Provider<ProductsRepository>((Ref ref) {
   return ProductsRepository(ref.watch(apiClientProvider));
 });
 
-final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
+final Provider<ReportsRepository> reportsRepositoryProvider = Provider<ReportsRepository>((Ref ref) {
   return ReportsRepository(ref.watch(apiClientProvider));
 });
 
-final notificationsRepositoryProvider = Provider<NotificationsRepository>((ref) {
+final Provider<NotificationsRepository> notificationsRepositoryProvider = Provider<NotificationsRepository>((Ref ref) {
   return NotificationsRepository(ref.watch(apiClientProvider));
 });
 

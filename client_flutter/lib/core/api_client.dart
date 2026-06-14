@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class ApiClient {
   final Dio dio;
   final storage = const FlutterSecureStorage();
+  void Function()? onUnauthorized;
 
   // Primary API endpoint config
   static const String apiBaseUrl = String.fromEnvironment(
@@ -26,7 +27,11 @@ class ApiClient {
         return handler.next(options);
       },
       onError: (DioException error, handler) {
-        // Common error handling (e.g. expired tokens, logs)
+        if (error.response?.statusCode == 401) {
+          if (onUnauthorized != null) {
+            onUnauthorized!();
+          }
+        }
         return handler.next(error);
       },
     ));

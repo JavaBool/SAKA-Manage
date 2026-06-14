@@ -20,6 +20,12 @@ class DashboardFrame extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<UserModel?>>(authStateProvider, (previous, next) {
+      if (next is AsyncData<UserModel?> && next.value == null) {
+        context.go('/login');
+      }
+    });
+
     final authState = ref.watch(authStateProvider);
 
     return authState.when(
