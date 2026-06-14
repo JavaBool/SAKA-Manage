@@ -1,4 +1,5 @@
 import sys
+import socket
 from flask_mail import Mail, Message
 
 # Shared Flask-Mail instance
@@ -10,7 +11,11 @@ def send_otp_email(recipient_email, otp):
     If mail transmission fails (e.g. SMTP server not configured),
     prints the OTP code to standard error so developers can retrieve it from logs.
     """
+    old_timeout = socket.getdefaulttimeout()
     try:
+        # Set a short timeout for the email sending attempt to avoid hanging worker threads
+        socket.setdefaulttimeout(10.0)
+        
         msg = Message(
             subject="SAKA-Manage Administrator Login OTP",
             recipients=[recipient_email],
@@ -23,3 +28,5 @@ def send_otp_email(recipient_email, otp):
         print(f"Failed to send OTP email: {str(e)}", file=sys.stderr)
         print(f"[DEVELOPER/TESTER ALERT] OTP code for {recipient_email} is: {otp}", file=sys.stderr)
         return False
+    finally:
+        socket.setdefaulttimeout(old_timeout)
