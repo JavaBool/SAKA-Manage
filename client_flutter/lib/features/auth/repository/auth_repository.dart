@@ -33,8 +33,16 @@ class AuthRepository {
         await storage.write(key: 'user_id', value: user.id);
         await storage.write(key: 'username', value: user.username);
 
-        // Cache user profile locally
+        // Clear all previous user caches to prevent stale data leakage
         final db = await DbHelper.database;
+        await db.delete('users');
+        await db.delete('contacts');
+        await db.delete('products');
+        await db.delete('reports');
+        await db.delete('followups');
+        await db.delete('notifications');
+
+        // Cache new user profile locally
         await db.insert(
           'users',
           user.toJson(),
