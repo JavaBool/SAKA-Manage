@@ -177,3 +177,41 @@ def test_analytics(client, seed_test_data, boss_headers):
     assert 'metrics' in data
     assert 'charts' in data
     assert data['metrics']['total_reports'] == 1
+
+def test_daily_targets(client, seed_test_data, boss_headers, manager_headers):
+    # 1. Fetch default target
+    resp = client.get('/api/v1/analytics/daily-target', headers=boss_headers)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['target_contacts'] == 10
+
+    # 2. Manager cannot set target
+    resp = client.post('/api/v1/analytics/daily-target', headers=manager_headers, json={
+        'target_contacts': 5
+    })
+    assert resp.status_code == 403
+
+    # 3. Boss sets new target
+    resp = client.post('/api/v1/analytics/daily-target', headers=boss_headers, json={
+        'target_contacts': 5
+    })
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['target_contacts'] == 5
+
+    # 4. Fetch daily summary
+    resp = client.get('/api/v1/analytics/daily-summary', headers=boss_headers)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['target_contacts'] == 5
+    assert data['actual_contacts_handled'] == 1
+    assert data['progress_percentage'] == 20
+    assert data['reports_count_today'] == 1
+    assert data['met_target'] is False
+
+    # 5. Send daily summary notification
+    resp = client.post('/api/v1/analytics/send-daily-summary', headers=boss_headers)
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success'] is True
+    assert 'Daily Summary' in data['title']

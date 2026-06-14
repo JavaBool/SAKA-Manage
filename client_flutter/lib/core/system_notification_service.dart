@@ -52,6 +52,9 @@ class SystemNotificationService {
                 builder: (context) => ReportDetailView(reportId: entityId),
               ),
             );
+          } else if (entityType == 'daily_target') {
+            // Switch to Daily Targets tab (Index 7 for Boss, Index 4 for Manager)
+            ref.read(activeMenuIndexProvider.notifier).state = isBoss ? 7 : 4;
           } else if (notificationId.isNotEmpty) {
             // Switch to Notifications Center tab (Index 6 for Boss, Index 3 for Manager)
             ref.read(activeMenuIndexProvider.notifier).state = isBoss ? 6 : 3;

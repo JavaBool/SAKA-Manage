@@ -36,6 +36,9 @@ migrate = Migrate(app, db)
 jwt = JWTManager(app)
 mail.init_app(app)
 
+with app.app_context():
+    db.create_all()
+
 # Register Blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
 app.register_blueprint(admin_auth_bp, url_prefix='/api/v1/admin_auth')

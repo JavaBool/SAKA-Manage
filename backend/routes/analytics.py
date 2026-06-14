@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from sqlalchemy import func
+from flask_jwt_extended import get_jwt_identity
 from backend.models.database import db
-from backend.models.models import Report, User, Product, Followup, Contact
+from backend.models.models import Report, User, Product, Followup, Contact, DailyTarget
 from backend.routes.decorators import role_required
 
 analytics_bp = Blueprint('analytics', __name__)
@@ -126,4 +127,118 @@ def get_analytics():
             "feature_requests_trend": fr_trend,
             "complaint_trend": complaint_trend
         }
+    }), 200
+
+@analytics_bp.route('/daily-target', methods=['GET'])
+@role_required('ADMIN', 'BOSS', 'MANAGER')
+def get_daily_target():
+    target = DailyTarget.query.order_by(DailyTarget.created_at.desc()).first()
+    if not target:
+        target = DailyTarget(target_contacts=10)
+        db.session.add(target)
+        db.session.commit()
+    return jsonify(target.to_dict()), 200
+
+@analytics_bp.route('/daily-target', methods=['POST'])
+@role_required('ADMIN', 'BOSS')
+def set_daily_target():
+    data = request.get_json() or {}
+    target_contacts = data.get('target_contacts')
+    if target_contacts is None:
+        return jsonify({"error": "target_contacts parameter is required"}), 400
+    try:
+        target_contacts = int(target_contacts)
+        if target_contacts < 1:
+            raise ValueError
+    except ValueError:
+        return jsonify({"error": "target_contacts must be a positive integer"}), 400
+
+    target = DailyTarget.query.order_by(DailyTarget.created_at.desc()).first()
+    if not target:
+        target = DailyTarget(target_contacts=target_contacts)
+        db.session.add(target)
+    else:
+        target.target_contacts = target_contacts
+    db.session.commit()
+
+    # Log in audit
+    user_id = get_jwt_identity()
+    from backend.services.audit_service import log_action
+    log_action(
+        action="Set Daily Target",
+        user_id=user_id,
+        entity_type="daily_target",
+        entity_id=target.id,
+        new_value={"target_contacts": target_contacts}
+    )
+
+    return jsonify(target.to_dict()), 200
+
+@analytics_bp.route('/daily-summary', methods=['GET'])
+@role_required('ADMIN', 'BOSS', 'MANAGER')
+def get_daily_summary():
+    # Retrieve latest daily target
+    target = DailyTarget.query.order_by(DailyTarget.created_at.desc()).first()
+    target_contacts = target.target_contacts if target else 10
+
+    # Calculate actual contacts handled today
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    
+    # Unique contacts for which reports were submitted today
+    reports_today = Report.query.filter(Report.created_at >= today_start).all()
+    unique_contacts_today = {r.contact_id for r in reports_today}
+    actual_contacts_handled = len(unique_contacts_today)
+    
+    progress_percentage = 0
+    if target_contacts > 0:
+        progress_percentage = min(100, int((actual_contacts_handled / target_contacts) * 100))
+
+    return jsonify({
+        "target_contacts": target_contacts,
+        "actual_contacts_handled": actual_contacts_handled,
+        "progress_percentage": progress_percentage,
+        "reports_count_today": len(reports_today),
+        "met_target": actual_contacts_handled >= target_contacts,
+        "date": today_start.strftime("%Y-%m-%d")
+    }), 200
+
+@analytics_bp.route('/send-daily-summary', methods=['POST'])
+@role_required('ADMIN', 'BOSS')
+def send_daily_summary_notification():
+    # Calculate daily target and actuals
+    target = DailyTarget.query.order_by(DailyTarget.created_at.desc()).first()
+    target_contacts = target.target_contacts if target else 10
+
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    
+    reports_today = Report.query.filter(Report.created_at >= today_start).all()
+    unique_contacts_today = {r.contact_id for r in reports_today}
+    actual_contacts_handled = len(unique_contacts_today)
+
+    status_str = "Met Target!" if actual_contacts_handled >= target_contacts else "Target Not Met"
+    date_str = today_start.strftime("%B %d, %Y")
+
+    title = f"Daily Summary: {date_str}"
+    message = (
+        f"Contacts handled today: {actual_contacts_handled}/{target_contacts} "
+        f"({int((actual_contacts_handled/target_contacts)*100) if target_contacts > 0 else 0}%). "
+        f"Status: {status_str}."
+    )
+
+    # Dispatch FCM summary to all bosses
+    from backend.services.notification_service import notify_all_bosses
+    notify_all_bosses(
+        title=title,
+        message=message,
+        entity_type="daily_target",
+        entity_id=target.id if target else None
+    )
+
+    return jsonify({
+        "success": True,
+        "title": title,
+        "message": message,
+        "recipient_role": "BOSS"
     }), 200

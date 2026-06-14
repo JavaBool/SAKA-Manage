@@ -258,3 +258,18 @@ class AdminOTP(db.Model):
             'otp': self.otp,
             'expires_at': self.expires_at
         }
+
+class DailyTarget(db.Model):
+    __tablename__ = 'daily_targets'
+    id = db.Column(db.Uuid, primary_key=True, default=uuid.uuid4)
+    target_contacts = db.Column(db.Integer, nullable=False, default=10)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'target_contacts': self.target_contacts,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }

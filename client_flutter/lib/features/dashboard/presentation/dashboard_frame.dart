@@ -16,6 +16,7 @@ import 'package:client_flutter/features/notifications/presentation/notifications
 import 'package:client_flutter/features/dashboard/presentation/boss_analytics_view.dart';
 import 'package:client_flutter/features/dashboard/presentation/boss_audit_logs_view.dart';
 import 'package:client_flutter/features/products/presentation/products_view.dart';
+import 'package:client_flutter/features/analytics/presentation/daily_targets_view.dart';
 
 // Local view manager state provider
 final activeMenuIndexProvider = StateProvider<int>((ref) => 0);
@@ -219,12 +220,14 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
                 {'title': 'Personnel', 'icon': Icons.badge_outlined},
                 {'title': 'Audit Logs', 'icon': Icons.fingerprint_outlined},
                 {'title': 'Notifications', 'icon': Icons.notifications_none_outlined},
+                {'title': 'Daily Targets', 'icon': Icons.track_changes_outlined},
               ]
             : [
                 {'title': 'Dashboard', 'icon': Icons.assessment_outlined},
                 {'title': 'Contacts', 'icon': Icons.contact_mail_outlined},
                 {'title': 'Reports', 'icon': Icons.rate_review_outlined},
                 {'title': 'Notifications', 'icon': Icons.notifications_none_outlined},
+                {'title': 'Daily Targets', 'icon': Icons.track_changes_outlined},
               ];
 
         // Switch to correct view
@@ -252,6 +255,9 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
             case 6:
               activeView = const NotificationsView();
               break;
+            case 7:
+              activeView = const DailyTargetsView();
+              break;
           }
         } else {
           switch (activeIndex) {
@@ -266,6 +272,9 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
               break;
             case 3:
               activeView = const NotificationsView();
+              break;
+            case 4:
+              activeView = const DailyTargetsView();
               break;
           }
         }

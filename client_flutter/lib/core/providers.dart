@@ -9,6 +9,7 @@ import 'package:client_flutter/features/contacts/repository/contacts_repository.
 import 'package:client_flutter/features/products/repository/products_repository.dart';
 import 'package:client_flutter/features/reports/repository/reports_repository.dart';
 import 'package:client_flutter/features/notifications/repository/notifications_repository.dart';
+import 'package:client_flutter/features/analytics/repository/analytics_repository.dart';
 import 'package:client_flutter/core/sync_controller.dart';
 
 // Core Providers
@@ -75,6 +76,10 @@ final Provider<ReportsRepository> reportsRepositoryProvider = Provider<ReportsRe
 
 final Provider<NotificationsRepository> notificationsRepositoryProvider = Provider<NotificationsRepository>((Ref ref) {
   return NotificationsRepository(ref.watch(apiClientProvider));
+});
+
+final Provider<AnalyticsRepository> analyticsRepositoryProvider = Provider<AnalyticsRepository>((Ref ref) {
+  return AnalyticsRepository(ref.watch(apiClientProvider));
 });
 
 // Auth State Notifier

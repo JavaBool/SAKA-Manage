@@ -25,7 +25,7 @@ class DbHelper {
     
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -34,6 +34,16 @@ class DbHelper {
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE contacts ADD COLUMN website TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE daily_targets (
+          id TEXT PRIMARY KEY,
+          target_contacts INTEGER,
+          created_at TEXT,
+          updated_at TEXT
+        )
+      ''');
     }
   }
   
@@ -132,6 +142,15 @@ class DbHelper {
         payload TEXT, -- JSON encoded payload
         filepath TEXT, -- optional path to local attachment file
         created_at TEXT
+      )
+    ''');
+    // 8. Daily Targets Cache
+    await db.execute('''
+      CREATE TABLE daily_targets (
+        id TEXT PRIMARY KEY,
+        target_contacts INTEGER,
+        created_at TEXT,
+        updated_at TEXT
       )
     ''');
   }
