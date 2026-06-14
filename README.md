@@ -1,4 +1,15 @@
+---
+title: SAKA Manage API
+emoji: 💼
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Customer Feedback & Reporting Management System
+
 
 A production-ready enterprise solution for customer feedback and reporting management, consisting of a Flask-based Backend Web Service (with a built-in admin dashboard) and a cross-platform Flutter Client (targeting Android and Windows) designed with modern Material 3 aesthetics, role-based access control, offline caching, and real-time push notifications.
 
