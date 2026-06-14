@@ -88,6 +88,71 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
     return mapping;
   }
 
+  void _showCsvInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppTheme.darkCard,
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppTheme.primary),
+              SizedBox(width: 8),
+              Text("CSV Import Guide", style: TextStyle(color: AppTheme.textMain)),
+            ],
+          ),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "To import contacts, select a standard CSV file. The file should have a header row and follow the columns described below:",
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  "Supported Columns:",
+                  style: TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  "• Name / Full Name / Contact Name (Required)\n"
+                  "• Company / Company Name / Organization\n"
+                  "• Designation / Title / Role / Job Title\n"
+                  "• Phone / Phone Number / Tel / Mobile\n"
+                  "• Email / Email Address\n"
+                  "• Website / URL / Web\n"
+                  "• Address / Street / Location",
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.5),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  "Conflict Resolution:",
+                  style: TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  "If a contact with the same name already exists in the directory, you will be asked to choose:\n"
+                  "1. Discard: Skip importing this duplicate contact.\n"
+                  "2. Update Details: Merge the CSV details into the existing contact.\n"
+                  "3. Rename & Add: Save as a new contact under a custom name.",
+                  style: TextStyle(color: AppTheme.textMuted, fontSize: 13, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Got it", style: TextStyle(color: AppTheme.primary)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _importCsv() async {
     try {
       final FilePickerResult? result = await FilePicker.pickFiles(
@@ -612,16 +677,28 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                       const SizedBox(height: 8),
                       const Text("List of contacts and organizations assigned to you.", style: TextStyle(color: AppTheme.textMuted)),
                       const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _importCsv,
-                        icon: const Icon(Icons.upload_file, size: 18),
-                        label: const Text("Import CSV"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.darkCard,
-                          foregroundColor: AppTheme.textMain,
-                          side: const BorderSide(color: AppTheme.borderColor),
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _importCsv,
+                              icon: const Icon(Icons.upload_file, size: 18),
+                              label: const Text("Import CSV"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.darkCard,
+                                foregroundColor: AppTheme.textMain,
+                                side: const BorderSide(color: AppTheme.borderColor),
+                                minimumSize: const Size(double.infinity, 48),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.info_outline, color: AppTheme.primary),
+                            tooltip: 'CSV Import Guide',
+                            onPressed: _showCsvInfoDialog,
+                          ),
+                        ],
                       ),
                     ],
                   )
@@ -649,6 +726,12 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                               foregroundColor: AppTheme.textMain,
                               side: const BorderSide(color: AppTheme.borderColor),
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.info_outline, color: AppTheme.primary),
+                            tooltip: 'CSV Import Guide',
+                            onPressed: _showCsvInfoDialog,
                           ),
                           const SizedBox(width: 12),
                           IconButton(
