@@ -195,39 +195,51 @@ class _ReportCreateViewState extends ConsumerState<ReportCreateView> {
                       onChanged: (val) => setState(() => _selectedProductId = val),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        // Feedback Type
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedFeedbackType,
-                            decoration: const InputDecoration(labelText: "Feedback Type"),
-                            items: const [
-                              DropdownMenuItem(value: "positive", child: Text("Positive")),
-                              DropdownMenuItem(value: "negative", child: Text("Negative")),
-                              DropdownMenuItem(value: "complaint", child: Text("Complaint")),
-                              DropdownMenuItem(value: "suggestion", child: Text("Suggestion")),
-                              DropdownMenuItem(value: "feature_request", child: Text("Feature Request")),
-                            ],
-                            onChanged: (val) => setState(() => _selectedFeedbackType = val ?? 'complaint'),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Priority
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedPriority,
-                            decoration: const InputDecoration(labelText: "Severity Priority"),
-                            items: const [
-                              DropdownMenuItem(value: "low", child: Text("LOW")),
-                              DropdownMenuItem(value: "medium", child: Text("MEDIUM")),
-                              DropdownMenuItem(value: "high", child: Text("HIGH")),
-                              DropdownMenuItem(value: "critical", child: Text("CRITICAL")),
-                            ],
-                            onChanged: (val) => setState(() => _selectedPriority = val ?? 'medium'),
-                          ),
-                        ),
-                      ],
+                    Builder(
+                      builder: (context) {
+                        final bool isMobile = MediaQuery.of(context).size.width < 600;
+                        
+                        final Widget fTypeField = DropdownButtonFormField<String>(
+                          value: _selectedFeedbackType,
+                          decoration: const InputDecoration(labelText: "Feedback Type"),
+                          items: const [
+                            DropdownMenuItem(value: "positive", child: Text("Positive")),
+                            DropdownMenuItem(value: "negative", child: Text("Negative")),
+                            DropdownMenuItem(value: "complaint", child: Text("Complaint")),
+                            DropdownMenuItem(value: "suggestion", child: Text("Suggestion")),
+                            DropdownMenuItem(value: "feature_request", child: Text("Feature Request")),
+                          ],
+                          onChanged: (val) => setState(() => _selectedFeedbackType = val ?? 'complaint'),
+                        );
+
+                        final Widget priorityField = DropdownButtonFormField<String>(
+                          value: _selectedPriority,
+                          decoration: const InputDecoration(labelText: "Severity Priority"),
+                          items: const [
+                            DropdownMenuItem(value: "low", child: Text("LOW")),
+                            DropdownMenuItem(value: "medium", child: Text("MEDIUM")),
+                            DropdownMenuItem(value: "high", child: Text("HIGH")),
+                            DropdownMenuItem(value: "critical", child: Text("CRITICAL")),
+                          ],
+                          onChanged: (val) => setState(() => _selectedPriority = val ?? 'medium'),
+                        );
+
+                        return isMobile
+                            ? Column(
+                                children: [
+                                  fTypeField,
+                                  const SizedBox(height: 16),
+                                  priorityField,
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(child: fTypeField),
+                                  const SizedBox(width: 16),
+                                  Expanded(child: priorityField),
+                                ],
+                              );
+                      },
                     ),
                     const SizedBox(height: 16),
                     // Summary Input

@@ -71,66 +71,80 @@ class _BossAuditLogsViewState extends ConsumerState<BossAuditLogsView> {
               ),
             ],
           ),
-          content: SizedBox(
-            width: 800,
-            height: 500,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("OLD VALUE", style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.bold, fontSize: 12)),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkInput,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.borderColor),
-                          ),
-                          child: SingleChildScrollView(
-                            child: Text(
-                              prettyOld.isEmpty ? "No old values recorded (Creation or System action)" : prettyOld,
-                              style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textMuted),
-                            ),
-                          ),
+          content: Builder(
+            builder: (context) {
+              final bool isMobile = MediaQuery.of(context).size.width < 768;
+              
+              final Widget oldWidget = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("OLD VALUE", style: TextStyle(color: AppTheme.textMuted, fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkInput,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderColor),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          prettyOld.isEmpty ? "No old values recorded (Creation or System action)" : prettyOld,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textMuted),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("NEW VALUE", style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12)),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkInput,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.borderColor),
-                          ),
-                          child: SingleChildScrollView(
-                            child: Text(
-                              prettyNew.isEmpty ? "No new values recorded (Delete or Session action)" : prettyNew,
-                              style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textMain),
-                            ),
-                          ),
+                ],
+              );
+
+              final Widget newWidget = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("NEW VALUE", style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkInput,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.borderColor),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          prettyNew.isEmpty ? "No new values recorded (Delete or Session action)" : prettyNew,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: AppTheme.textMain),
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+
+              return SizedBox(
+                width: isMobile ? MediaQuery.of(context).size.width * 0.9 : 800,
+                height: isMobile ? MediaQuery.of(context).size.height * 0.7 : 500,
+                child: isMobile
+                    ? Column(
+                        children: [
+                          Expanded(child: oldWidget),
+                          const SizedBox(height: 12),
+                          Expanded(child: newWidget),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(child: oldWidget),
+                          const SizedBox(width: 16),
+                          Expanded(child: newWidget),
+                        ],
+                      ),
+              );
+            },
           ),
           actions: [
             TextButton(

@@ -205,6 +205,7 @@ class _ProductsViewState extends ConsumerState<ProductsView> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 600;
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
@@ -291,27 +292,49 @@ class _ProductsViewState extends ConsumerState<ProductsView> {
                                       product.description ?? "No description provided",
                                       style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
                                     ),
+                                    if (isMobile) ...[
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: product.active
+                                              ? AppTheme.success.withOpacity(0.12)
+                                              : AppTheme.textMuted.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          product.active ? 'ACTIVE' : 'INACTIVE',
+                                          style: TextStyle(
+                                            color: product.active ? AppTheme.success : AppTheme.textMuted,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: product.active
-                                      ? AppTheme.success.withOpacity(0.12)
-                                      : AppTheme.textMuted.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  product.active ? 'ACTIVE' : 'INACTIVE',
-                                  style: TextStyle(
-                                    color: product.active ? AppTheme.success : AppTheme.textMuted,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
+                              if (!isMobile) ...[
+                                const SizedBox(width: 16),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: product.active
+                                        ? AppTheme.success.withOpacity(0.12)
+                                        : AppTheme.textMuted.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    product.active ? 'ACTIVE' : 'INACTIVE',
+                                    style: TextStyle(
+                                      color: product.active ? AppTheme.success : AppTheme.textMuted,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                               const SizedBox(width: 16),
                               PopupMenuButton<String>(
                                 icon: const Icon(Icons.more_vert, color: AppTheme.textMuted),

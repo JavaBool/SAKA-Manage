@@ -199,93 +199,152 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
                 ),
                 const SizedBox(height: 16),
                 // Metadata parameters
-                Row(
-                  children: [
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("PRIORITY", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-                              const SizedBox(height: 4),
-                              Text(
-                                report.priority.toUpperCase(),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ],
-                          ),
+                // Metadata parameters
+                Builder(
+                  builder: (context) {
+                    final bool isMobile = MediaQuery.of(context).size.width < 600;
+                    
+                    final Widget priorityWidget = Card(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("PRIORITY", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                            const SizedBox(height: 4),
+                            Text(
+                              report.priority.toUpperCase(),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("FEEDBACK TYPE", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-                              const SizedBox(height: 4),
-                              Text(
-                                report.feedbackType.replaceAll('_', ' ').toUpperCase(),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ],
-                          ),
+                    );
+
+                    final Widget typeWidget = Card(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("FEEDBACK TYPE", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                            const SizedBox(height: 4),
+                            Text(
+                              report.feedbackType.replaceAll('_', ' ').toUpperCase(),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                    );
+
+                    return isMobile
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              priorityWidget,
+                              const SizedBox(height: 8),
+                              typeWidget,
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(child: priorityWidget),
+                              const SizedBox(width: 12),
+                              Expanded(child: typeWidget),
+                            ],
+                          );
+                  },
                 ),
                 const SizedBox(height: 16),
                 // Status modifier row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
+                Builder(
+                  builder: (context) {
+                    final bool isMobile = MediaQuery.of(context).size.width < 600;
+
+                    final Widget statusText = const Text(
                       "Current Ticket Status:",
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textMain),
-                    ),
-                    if (isCreator && report.status != 'closed')
-                      Row(
-                        children: [
-                          ElevatedButton(
-                            onPressed: _isActionLoading ? null : () => _updateStatus(report, 'followup_pending'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.warning.withOpacity(0.2),
-                              foregroundColor: AppTheme.warning,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    );
+
+                    final Widget actions = isCreator && report.status != 'closed'
+                        ? Row(
+                            mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
+                            children: [
+                              isMobile
+                                  ? Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: _isActionLoading ? null : () => _updateStatus(report, 'followup_pending'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppTheme.warning.withOpacity(0.2),
+                                          foregroundColor: AppTheme.warning,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                        ),
+                                        child: const Text("PENDING", style: TextStyle(fontSize: 12)),
+                                      ),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: _isActionLoading ? null : () => _updateStatus(report, 'followup_pending'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.warning.withOpacity(0.2),
+                                        foregroundColor: AppTheme.warning,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      ),
+                                      child: const Text("PENDING", style: TextStyle(fontSize: 12)),
+                                    ),
+                              const SizedBox(width: 8),
+                              isMobile
+                                  ? Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: _isActionLoading ? null : () => _updateStatus(report, 'closed'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppTheme.success.withOpacity(0.2),
+                                          foregroundColor: AppTheme.success,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                        ),
+                                        child: const Text("CLOSE TICKET", style: TextStyle(fontSize: 12)),
+                                      ),
+                                    )
+                                  : ElevatedButton(
+                                      onPressed: _isActionLoading ? null : () => _updateStatus(report, 'closed'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.success.withOpacity(0.2),
+                                        foregroundColor: AppTheme.success,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      ),
+                                      child: const Text("CLOSE TICKET", style: TextStyle(fontSize: 12)),
+                                    ),
+                            ],
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text("PENDING", style: TextStyle(fontSize: 12)),
-                          ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: _isActionLoading ? null : () => _updateStatus(report, 'closed'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.success.withOpacity(0.2),
-                              foregroundColor: AppTheme.success,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            child: Text(
+                              report.status.toUpperCase(),
+                              style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
                             ),
-                            child: const Text("CLOSE TICKET", style: TextStyle(fontSize: 12)),
-                          ),
-                        ],
-                      )
-                    else
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          report.status.toUpperCase(),
-                          style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                  ],
+                          );
+
+                    return isMobile
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              statusText,
+                              const SizedBox(height: 12),
+                              actions,
+                            ],
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              statusText,
+                              actions,
+                            ],
+                          );
+                  },
                 ),
                 const SizedBox(height: 24),
                 // Detailed Notes

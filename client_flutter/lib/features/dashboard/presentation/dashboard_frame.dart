@@ -103,118 +103,144 @@ class DashboardFrame extends ConsumerWidget {
           }
         }
 
+        final bool isMobile = MediaQuery.of(context).size.width < 768;
+
+        Widget buildSidebarContent({required bool inDrawer}) {
+          return Container(
+            color: AppTheme.darkCard,
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Brand Logo
+                Row(
+                  children: [
+                    const Icon(Icons.widgets_outlined, color: AppTheme.primary, size: 28),
+                    const SizedBox(width: 10),
+                    Text(
+                      "SAKA Manage",
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                // Navigation menus
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: menuItems.length,
+                    itemBuilder: (context, idx) {
+                      final item = menuItems[idx];
+                      final isSelected = activeIndex == idx;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6.0),
+                        child: InkWell(
+                          onTap: () {
+                            ref.read(activeMenuIndexProvider.notifier).state = idx;
+                            if (inDrawer) {
+                              Navigator.pop(context);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppTheme.primary.withOpacity(0.12) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: isSelected
+                                  ? const Border(left: BorderSide(color: AppTheme.primary, width: 3))
+                                  : null,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  item['icon'] as IconData,
+                                  color: isSelected ? AppTheme.textMain : AppTheme.textMuted,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  item['title'] as String,
+                                  style: TextStyle(
+                                    color: isSelected ? AppTheme.textMain : AppTheme.textMuted,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Profile/Logout
+                const Divider(color: AppTheme.borderColor),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppTheme.primary,
+                      child: Icon(Icons.person, color: Colors.white, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user.username,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textMain),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            user.role,
+                            style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.logout, color: AppTheme.danger, size: 18),
+                      onPressed: () {
+                        ref.read(authStateProvider.notifier).logout().then((_) {
+                          context.go('/login');
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (isMobile) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Text(menuItems[activeIndex]['title'] as String),
+            ),
+            drawer: Drawer(
+              width: 240,
+              child: buildSidebarContent(inDrawer: true),
+            ),
+            body: SafeArea(
+              child: activeView,
+            ),
+          );
+        }
+
         return Scaffold(
           body: Row(
             children: [
               // Left fixed Sidebar
-              Container(
+              SizedBox(
                 width: 240,
-                color: AppTheme.darkCard,
-                padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Brand Logo
-                    Row(
-                      children: [
-                        const Icon(Icons.widgets_outlined, color: AppTheme.primary, size: 28),
-                        const SizedBox(width: 10),
-                        Text(
-                          "SAKA Manage",
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    // Navigation menus
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: menuItems.length,
-                        itemBuilder: (context, idx) {
-                          final item = menuItems[idx];
-                          final isSelected = activeIndex == idx;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6.0),
-                            child: InkWell(
-                              onTap: () {
-                                ref.read(activeMenuIndexProvider.notifier).state = idx;
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? AppTheme.primary.withOpacity(0.12) : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: isSelected
-                                      ? const Border(left: BorderSide(color: AppTheme.primary, width: 3))
-                                      : null,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      item['icon'] as IconData,
-                                      color: isSelected ? AppTheme.textMain : AppTheme.textMuted,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Text(
-                                      item['title'] as String,
-                                      style: TextStyle(
-                                        color: isSelected ? AppTheme.textMain : AppTheme.textMuted,
-                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    // Profile/Logout
-                    const Divider(color: AppTheme.borderColor),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppTheme.primary,
-                          child: Icon(Icons.person, color: Colors.white, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user.username,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textMain),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                user.role,
-                                style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.logout, color: AppTheme.danger, size: 18),
-                          onPressed: () {
-                            ref.read(authStateProvider.notifier).logout().then((_) {
-                              context.go('/login');
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                child: buildSidebarContent(inDrawer: false),
               ),
               // Vertical divider line
               const VerticalDivider(width: 1, color: AppTheme.borderColor),
@@ -350,6 +376,7 @@ class ManagerSummaryView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final bool isMobile = MediaQuery.of(context).size.width < 768;
     return FutureBuilder<Map<String, dynamic>>(
       future: _fetchSummaryStats(ref),
       builder: (context, snapshot) {
@@ -373,57 +400,103 @@ class ManagerSummaryView extends ConsumerWidget {
               const Text("Quick summary of your assigned clients and submitted reports.", style: TextStyle(color: AppTheme.textMuted)),
               const SizedBox(height: 24),
               // KPI Cards
-              Row(
-                children: [
-                  Expanded(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Assigned Clients", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-                            const SizedBox(height: 8),
-                            Text("${stats['total_contacts']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                          ],
+              isMobile
+                  ? Column(
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text("Assigned Clients", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                const SizedBox(height: 8),
+                                Text("${stats['total_contacts']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Active Reports", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-                            const SizedBox(height: 8),
-                            Text("${stats['open_reports'] + stats['pending_reports']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.warning)),
-                          ],
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text("Active Reports", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                const SizedBox(height: 8),
+                                Text("${stats['open_reports'] + stats['pending_reports']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.warning)),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Closed Reports", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-                            const SizedBox(height: 8),
-                            Text("${stats['closed_reports']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.success)),
-                          ],
+                        const SizedBox(height: 12),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text("Closed Reports", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                const SizedBox(height: 8),
+                                Text("${stats['closed_reports']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.success)),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Assigned Clients", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                  const SizedBox(height: 8),
+                                  Text("${stats['total_contacts']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Active Reports", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                  const SizedBox(height: 8),
+                                  Text("${stats['open_reports'] + stats['pending_reports']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.warning)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Closed Reports", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                  const SizedBox(height: 8),
+                                  Text("${stats['closed_reports']}", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.success)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
               const SizedBox(height: 32),
               // Recent reports list
               const Text("Recent Submissions", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),

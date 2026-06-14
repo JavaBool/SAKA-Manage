@@ -33,6 +33,7 @@ class _BossAnalyticsViewState extends ConsumerState<BossAnalyticsView> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 768;
     return Scaffold(
       body: FutureBuilder<Map<String, dynamic>>(
         future: _analyticsFuture,
@@ -141,177 +142,335 @@ class _BossAnalyticsViewState extends ConsumerState<BossAnalyticsView> {
                 const SizedBox(height: 24),
 
                 // Middle Section: Completion rate & priority distribution
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("Resolution Rate", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(height: 20),
-                              Center(
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 140,
-                                      height: 140,
-                                      child: CircularProgressIndicator(
-                                        value: completionRate / 100.0,
-                                        strokeWidth: 12,
-                                        backgroundColor: AppTheme.borderColor,
-                                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
-                                      ),
-                                    ),
-                                    Column(
+                isMobile
+                    ? Column(
+                        children: [
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Resolution Rate", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  const SizedBox(height: 20),
+                                  Center(
+                                    child: Stack(
+                                      alignment: Alignment.center,
                                       children: [
-                                        Text("${completionRate.toStringAsFixed(1)}%", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                                        const Text("Closed", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                        SizedBox(
+                                          width: 140,
+                                          height: 140,
+                                          child: CircularProgressIndicator(
+                                            value: completionRate / 100.0,
+                                            strokeWidth: 12,
+                                            backgroundColor: AppTheme.borderColor,
+                                            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
+                                          ),
+                                        ),
+                                        Column(
+                                          children: [
+                                            Text("${completionRate.toStringAsFixed(1)}%", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                                            const Text("Closed", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                          ],
+                                        ),
                                       ],
                                     ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  _buildLegendRow("Resolved Reports", "$closedReports", AppTheme.success),
+                                  const Divider(height: 20, color: AppTheme.borderColor),
+                                  _buildLegendRow("Active Backlog", "${openReports + pendingReports}", AppTheme.warning),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Priority Breakdown", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  const SizedBox(height: 24),
+                                  _buildPriorityBar("Critical", priorityDistribution['critical'] ?? 0, totalReports, AppTheme.danger),
+                                  const SizedBox(height: 14),
+                                  _buildPriorityBar("High", priorityDistribution['high'] ?? 0, totalReports, AppTheme.secondary),
+                                  const SizedBox(height: 14),
+                                  _buildPriorityBar("Medium", priorityDistribution['medium'] ?? 0, totalReports, AppTheme.primary),
+                                  const SizedBox(height: 14),
+                                  _buildPriorityBar("Low", priorityDistribution['low'] ?? 0, totalReports, AppTheme.success),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 4,
+                            child: Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text("Resolution Rate", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    const SizedBox(height: 20),
+                                    Center(
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 140,
+                                            height: 140,
+                                            child: CircularProgressIndicator(
+                                              value: completionRate / 100.0,
+                                              strokeWidth: 12,
+                                              backgroundColor: AppTheme.borderColor,
+                                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.success),
+                                            ),
+                                          ),
+                                          Column(
+                                            children: [
+                                              Text("${completionRate.toStringAsFixed(1)}%", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                                              const Text("Closed", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildLegendRow("Resolved Reports", "$closedReports", AppTheme.success),
+                                    const Divider(height: 20, color: AppTheme.borderColor),
+                                    _buildLegendRow("Active Backlog", "${openReports + pendingReports}", AppTheme.warning),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 20),
-                              _buildLegendRow("Resolved Reports", "$closedReports", AppTheme.success),
-                              const Divider(height: 20, color: AppTheme.borderColor),
-                              _buildLegendRow("Active Backlog", "${openReports + pendingReports}", AppTheme.warning),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 6,
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("Priority Breakdown", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(height: 24),
-                              _buildPriorityBar("Critical", priorityDistribution['critical'] ?? 0, totalReports, AppTheme.danger),
-                              const SizedBox(height: 14),
-                              _buildPriorityBar("High", priorityDistribution['high'] ?? 0, totalReports, AppTheme.secondary),
-                              const SizedBox(height: 14),
-                              _buildPriorityBar("Medium", priorityDistribution['medium'] ?? 0, totalReports, AppTheme.primary),
-                              const SizedBox(height: 14),
-                              _buildPriorityBar("Low", priorityDistribution['low'] ?? 0, totalReports, AppTheme.success),
-                            ],
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 6,
+                            child: Card(
+                              child: Padding(
+                                                            padding: const EdgeInsets.all(20.0),
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                const Text("Priority Breakdown", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                                const SizedBox(height: 24),
+                                                                _buildPriorityBar("Critical", priorityDistribution['critical'] ?? 0, totalReports, AppTheme.danger),
+                                                                const SizedBox(height: 14),
+                                                                _buildPriorityBar("High", priorityDistribution['high'] ?? 0, totalReports, AppTheme.secondary),
+                                                                const SizedBox(height: 14),
+                                                                _buildPriorityBar("Medium", priorityDistribution['medium'] ?? 0, totalReports, AppTheme.primary),
+                                                                const SizedBox(height: 14),
+                                                                _buildPriorityBar("Low", priorityDistribution['low'] ?? 0, totalReports, AppTheme.success),
+                                                              ],
+                                                            ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 24),
 
                 // Bottom Section: Reports by Product & Manager
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("Submissions by Product", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(height: 16),
-                              reportsByProduct.isEmpty
-                                  ? const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 32.0),
-                                      child: Center(child: Text("No product reports registered yet.", style: TextStyle(color: AppTheme.textMuted))),
-                                    )
-                                  : Column(
-                                      children: reportsByProduct.entries.map((e) {
-                                        return Padding(
-                                          padding: const EdgeInsets.only(bottom: 12.0),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 20),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                isMobile
+                    ? Column(
+                        children: [
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Submissions by Product", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  const SizedBox(height: 16),
+                                  reportsByProduct.isEmpty
+                                      ? const Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 32.0),
+                                          child: Center(child: Text("No product reports registered yet.", style: TextStyle(color: AppTheme.textMuted))),
+                                        )
+                                      : Column(
+                                          children: reportsByProduct.entries.map((e) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(bottom: 12.0),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 20),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                  ),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme.primary.withOpacity(0.12),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      "${e.value}",
+                                                      style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                                                    ),
+                                                  )
+                                                ],
                                               ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: AppTheme.primary.withOpacity(0.12),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  "${e.value}",
-                                                  style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                            ],
+                                            );
+                                          }).toList(),
+                                        ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("Submissions by Manager", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(height: 16),
-                              reportsByManager.isEmpty
-                                  ? const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 32.0),
-                                      child: Center(child: Text("No manager reports registered yet.", style: TextStyle(color: AppTheme.textMuted))),
-                                    )
-                                  : Column(
-                                      children: reportsByManager.entries.map((e) {
-                                        return Padding(
-                                          padding: const EdgeInsets.only(bottom: 12.0),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.person_outline, color: AppTheme.secondary, size: 20),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 16),
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("Submissions by Manager", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  const SizedBox(height: 16),
+                                  reportsByManager.isEmpty
+                                      ? const Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 32.0),
+                                          child: Center(child: Text("No manager reports registered yet.", style: TextStyle(color: AppTheme.textMuted))),
+                                        )
+                                      : Column(
+                                          children: reportsByManager.entries.map((e) {
+                                            return Padding(
+                                              padding: const EdgeInsets.only(bottom: 12.0),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.person_outline, color: AppTheme.secondary, size: 20),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                  ),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme.secondary.withOpacity(0.12),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      "${e.value}",
+                                                      style: const TextStyle(color: AppTheme.secondary, fontWeight: FontWeight.bold),
+                                                    ),
+                                                  )
+                                                ],
                                               ),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: AppTheme.secondary.withOpacity(0.12),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  "${e.value}",
-                                                  style: const TextStyle(color: AppTheme.secondary, fontWeight: FontWeight.bold),
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                            ],
+                                            );
+                                          }).toList(),
+                                        ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text("Submissions by Product", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    const SizedBox(height: 16),
+                                    reportsByProduct.isEmpty
+                                        ? const Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 32.0),
+                                            child: Center(child: Text("No product reports registered yet.", style: TextStyle(color: AppTheme.textMuted))),
+                                          )
+                                        : Column(
+                                            children: reportsByProduct.entries.map((e) {
+                                              return Padding(
+                                                padding: const EdgeInsets.only(bottom: 12.0),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(Icons.shopping_bag_outlined, color: AppTheme.primary, size: 20),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                    ),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: AppTheme.primary.withOpacity(0.12),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        "${e.value}",
+                                                        style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                                                      ),
+                                                    )
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text("Submissions by Manager", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                    const SizedBox(height: 16),
+                                    reportsByManager.isEmpty
+                                        ? const Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 32.0),
+                                            child: Center(child: Text("No manager reports registered yet.", style: TextStyle(color: AppTheme.textMuted))),
+                                          )
+                                        : Column(
+                                            children: reportsByManager.entries.map((e) {
+                                              return Padding(
+                                                padding: const EdgeInsets.only(bottom: 12.0),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(Icons.person_outline, color: AppTheme.secondary, size: 20),
+                                                    const SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                                    ),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: AppTheme.secondary.withOpacity(0.12),
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        "${e.value}",
+                                                        style: const TextStyle(color: AppTheme.secondary, fontWeight: FontWeight.bold),
+                                                      ),
+                                                    )
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ],
             ),
           );

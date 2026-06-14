@@ -38,41 +38,71 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMobile = MediaQuery.of(context).size.width < 768;
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Notifications Center", style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  const Text("Alerts regarding report submissions, followups, and escalations.", style: TextStyle(color: AppTheme.textMuted)),
-                ],
-              ),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.done_all, size: 18),
-                    label: const Text("Mark All Read"),
-                    onPressed: _markAllRead,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          isMobile
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Notifications Center", style: Theme.of(context).textTheme.titleLarge),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, color: AppTheme.primary),
+                          onPressed: _refreshNotifications,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    icon: const Icon(Icons.refresh, color: AppTheme.primary),
-                    onPressed: _refreshNotifications,
-                  ),
-                ],
-              )
-            ],
-          ),
+                    const SizedBox(height: 8),
+                    const Text("Alerts regarding report submissions, followups, and escalations.", style: TextStyle(color: AppTheme.textMuted)),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.done_all, size: 18),
+                      label: const Text("Mark All Read"),
+                      onPressed: _markAllRead,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        minimumSize: const Size(double.infinity, 48),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Notifications Center", style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        const Text("Alerts regarding report submissions, followups, and escalations.", style: TextStyle(color: AppTheme.textMuted)),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.done_all, size: 18),
+                          label: const Text("Mark All Read"),
+                          onPressed: _markAllRead,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, color: AppTheme.primary),
+                          onPressed: _refreshNotifications,
+                        ),
+                      ],
+                    )
+                  ],
+                ),
           const SizedBox(height: 24),
           Expanded(
             child: FutureBuilder<List<NotificationModel>>(

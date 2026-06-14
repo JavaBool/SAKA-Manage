@@ -50,6 +50,53 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
     final user = authState.value;
     final bool canCreate = user?.role == 'MANAGER' || user?.role == 'BOSS' || user?.role == 'ADMIN';
 
+    final bool isMobile = MediaQuery.of(context).size.width < 768;
+
+    final Widget searchField = TextField(
+      decoration: const InputDecoration(
+        hintText: "Search summary or details...",
+        prefixIcon: Icon(Icons.search, color: AppTheme.textMuted),
+      ),
+      onChanged: (val) {
+        setState(() {
+          _searchQuery = val.toLowerCase();
+        });
+      },
+    );
+
+    final Widget priorityDropdown = DropdownButtonFormField<String>(
+      decoration: const InputDecoration(labelText: "Priority"),
+      items: const [
+        DropdownMenuItem(value: "", child: Text("All")),
+        DropdownMenuItem(value: "low", child: Text("LOW")),
+        DropdownMenuItem(value: "medium", child: Text("MEDIUM")),
+        DropdownMenuItem(value: "high", child: Text("HIGH")),
+        DropdownMenuItem(value: "critical", child: Text("CRITICAL")),
+      ],
+      onChanged: (val) {
+        setState(() {
+          _filterPriority = val ?? "";
+        });
+      },
+    );
+
+    final Widget feedbackDropdown = DropdownButtonFormField<String>(
+      decoration: const InputDecoration(labelText: "Feedback"),
+      items: const [
+        DropdownMenuItem(value: "", child: Text("All")),
+        DropdownMenuItem(value: "positive", child: Text("Positive")),
+        DropdownMenuItem(value: "negative", child: Text("Negative")),
+        DropdownMenuItem(value: "complaint", child: Text("Complaint")),
+        DropdownMenuItem(value: "suggestion", child: Text("Suggestion")),
+        DropdownMenuItem(value: "feature_request", child: Text("Feature Request")),
+      ],
+      onChanged: (val) {
+        setState(() {
+          _filterType = val ?? "";
+        });
+      },
+    );
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
@@ -57,82 +104,71 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Customer Reports", style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 8),
-                    const Text("Audit logs of client feedback regarding products.", style: TextStyle(color: AppTheme.textMuted)),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: AppTheme.primary),
-                  onPressed: _refreshReports,
-                )
-              ],
-            ),
+            isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Customer Reports", style: Theme.of(context).textTheme.titleLarge),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, color: AppTheme.primary),
+                            onPressed: _refreshReports,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text("Audit logs of client feedback regarding products.", style: TextStyle(color: AppTheme.textMuted)),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Customer Reports", style: Theme.of(context).textTheme.titleLarge),
+                          const SizedBox(height: 8),
+                          const Text("Audit logs of client feedback regarding products.", style: TextStyle(color: AppTheme.textMuted)),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, color: AppTheme.primary),
+                        onPressed: _refreshReports,
+                      )
+                    ],
+                  ),
             const SizedBox(height: 24),
             // Search & Filters row
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: "Search summary or details...",
-                      prefixIcon: Icon(Icons.search, color: AppTheme.textMuted),
-                    ),
-                    onChanged: (val) {
-                      setState(() {
-                        _searchQuery = val.toLowerCase();
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: "Priority"),
-                    items: const [
-                      DropdownMenuItem(value: "", child: Text("All")),
-                      DropdownMenuItem(value: "low", child: Text("LOW")),
-                      DropdownMenuItem(value: "medium", child: Text("MEDIUM")),
-                      DropdownMenuItem(value: "high", child: Text("HIGH")),
-                      DropdownMenuItem(value: "critical", child: Text("CRITICAL")),
+            isMobile
+                ? Column(
+                    children: [
+                      searchField,
+                      const SizedBox(height: 12),
+                      priorityDropdown,
+                      const SizedBox(height: 12),
+                      feedbackDropdown,
                     ],
-                    onChanged: (val) {
-                      setState(() {
-                        _filterPriority = val ?? "";
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: "Feedback"),
-                    items: const [
-                      DropdownMenuItem(value: "", child: Text("All")),
-                      DropdownMenuItem(value: "positive", child: Text("Positive")),
-                      DropdownMenuItem(value: "negative", child: Text("Negative")),
-                      DropdownMenuItem(value: "complaint", child: Text("Complaint")),
-                      DropdownMenuItem(value: "suggestion", child: Text("Suggestion")),
-                      DropdownMenuItem(value: "feature_request", child: Text("Feature Request")),
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: searchField,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: priorityDropdown,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: feedbackDropdown,
+                      ),
                     ],
-                    onChanged: (val) {
-                      setState(() {
-                        _filterType = val ?? "";
-                      });
-                    },
                   ),
-                ),
-              ],
-            ),
             const SizedBox(height: 20),
             // Reports List
             Expanded(

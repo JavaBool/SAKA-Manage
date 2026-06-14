@@ -579,6 +579,8 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
     final currentUser = ref.watch(authStateProvider).value;
     final bool canCreate = currentUser != null;
 
+    final bool isMobile = MediaQuery.of(context).size.width < 768;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: canCreate
@@ -593,40 +595,70 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
+            isMobile
+                ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Client Directory", style: Theme.of(context).textTheme.titleLarge),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Client Directory", style: Theme.of(context).textTheme.titleLarge),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, color: AppTheme.primary),
+                            onPressed: _refreshContacts,
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 8),
                       const Text("List of contacts and organizations assigned to you.", style: TextStyle(color: AppTheme.textMuted)),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _importCsv,
+                        icon: const Icon(Icons.upload_file, size: 18),
+                        label: const Text("Import CSV"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.darkCard,
+                          foregroundColor: AppTheme.textMain,
+                          side: const BorderSide(color: AppTheme.borderColor),
+                          minimumSize: const Size(double.infinity, 48),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Client Directory", style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 8),
+                            const Text("List of contacts and organizations assigned to you.", style: TextStyle(color: AppTheme.textMuted)),
+                          ],
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _importCsv,
+                            icon: const Icon(Icons.upload_file, size: 18),
+                            label: const Text("Import CSV"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.darkCard,
+                              foregroundColor: AppTheme.textMain,
+                              side: const BorderSide(color: AppTheme.borderColor),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton(
+                            icon: const Icon(Icons.refresh, color: AppTheme.primary),
+                            onPressed: _refreshContacts,
+                          ),
+                        ],
+                      )
                     ],
                   ),
-                ),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _importCsv,
-                      icon: const Icon(Icons.upload_file, size: 18),
-                      label: const Text("Import CSV"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.darkCard,
-                        foregroundColor: AppTheme.textMain,
-                        side: const BorderSide(color: AppTheme.borderColor),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: AppTheme.primary),
-                      onPressed: _refreshContacts,
-                    ),
-                  ],
-                )
-              ],
-            ),
             const SizedBox(height: 24),
             // Search box
             TextField(
@@ -707,40 +739,87 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                         contact.address!,
                                         style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, overflow: TextOverflow.ellipsis),
                                       ),
-                                    ]
+                                    ],
+                                    if (isMobile) ...[
+                                      const SizedBox(height: 8),
+                                      const Divider(height: 12, color: AppTheme.borderColor),
+                                      if (contact.phone != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.phone, size: 12, color: AppTheme.textMuted),
+                                              const SizedBox(width: 6),
+                                              Text(contact.phone!, style: const TextStyle(fontSize: 12, color: AppTheme.textMain)),
+                                            ],
+                                          ),
+                                        ),
+                                      if (contact.email != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 4),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.email, size: 12, color: AppTheme.textMuted),
+                                              const SizedBox(width: 6),
+                                              Text(contact.email!, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                                            ],
+                                          ),
+                                        ),
+                                      if (contact.website != null && contact.website!.isNotEmpty)
+                                        InkWell(
+                                          onTap: () => _launchUrl(contact.website!),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.language, size: 12, color: AppTheme.primary),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                _displayUrl(contact.website!),
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.primary,
+                                                  decoration: TextDecoration.underline,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
                                   ],
                                 ),
                               ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (contact.phone != null)
-                                    Text(contact.phone!, style: const TextStyle(fontSize: 12, color: AppTheme.textMain)),
-                                  if (contact.email != null)
-                                    Text(contact.email!, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-                                  if (contact.website != null && contact.website!.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    InkWell(
-                                      onTap: () => _launchUrl(contact.website!),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.language, size: 12, color: AppTheme.primary),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            _displayUrl(contact.website!),
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppTheme.primary,
-                                              decoration: TextDecoration.underline,
+                              if (!isMobile) ...[
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    if (contact.phone != null)
+                                      Text(contact.phone!, style: const TextStyle(fontSize: 12, color: AppTheme.textMain)),
+                                    if (contact.email != null)
+                                      Text(contact.email!, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                                    if (contact.website != null && contact.website!.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      InkWell(
+                                        onTap: () => _launchUrl(contact.website!),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.language, size: 12, color: AppTheme.primary),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _displayUrl(contact.website!),
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.primary,
+                                                decoration: TextDecoration.underline,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                   ],
-                                ],
-                              ),
+                                ),
+                              ],
                               if (canManage) ...[
                                 const SizedBox(width: 8),
                                 PopupMenuButton<String>(
