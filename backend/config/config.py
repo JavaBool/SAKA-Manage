@@ -1,9 +1,11 @@
 import os
 import secrets
+from datetime import timedelta
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-12345")
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "jwt-dev-secret-key-12345")
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=30)
     
     # SQLite fallback for local development if PostgreSQL is not available
     # Using an absolute path to the root 'instance' folder to prevent relative path mismatches
