@@ -22,6 +22,7 @@ class BackendUrlNotifier extends StateNotifier<String> {
 
   static const String huggingFaceUrl = 'https://javabool-sakamanage.hf.space/api/v1';
   static const String renderUrl = 'https://saka-manage.onrender.com/api/v1';
+  static const String vercelUrl = 'https://saka-manage.vercel.app/api/v1';
 
   BackendUrlNotifier(this._storage) : super(huggingFaceUrl) {
     _loadUrl();
@@ -29,7 +30,7 @@ class BackendUrlNotifier extends StateNotifier<String> {
 
   Future<void> _loadUrl() async {
     final saved = await _storage.read(key: key);
-    if (saved != null && (saved == renderUrl || saved == huggingFaceUrl)) {
+    if (saved != null && (saved == renderUrl || saved == huggingFaceUrl || saved == vercelUrl)) {
       state = saved;
     }
   }

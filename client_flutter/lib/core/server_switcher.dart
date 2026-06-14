@@ -11,9 +11,18 @@ class ServerSwitcherWidget extends ConsumerWidget {
     final activeUrl = ref.watch(backendUrlProvider);
     final notifier = ref.read(backendUrlProvider.notifier);
 
-    final isHf = activeUrl == BackendUrlNotifier.huggingFaceUrl;
-    final serverName = isHf ? "HF (Fast)" : "Render (Backup)";
-    final serverColor = isHf ? AppTheme.success : AppTheme.warning;
+    String serverName;
+    Color serverColor;
+    if (activeUrl == BackendUrlNotifier.vercelUrl) {
+      serverName = "Vercel (Edge)";
+      serverColor = AppTheme.primary;
+    } else if (activeUrl == BackendUrlNotifier.huggingFaceUrl) {
+      serverName = "HF (Fast)";
+      serverColor = AppTheme.success;
+    } else {
+      serverName = "Render (Backup)";
+      serverColor = AppTheme.warning;
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -31,16 +40,24 @@ class ServerSwitcherWidget extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: PopupMenuButton<String>(
         tooltip: "Change server",
-        offset: const Offset(0, -90),
+        offset: const Offset(0, -130),
         onSelected: (url) async {
           if (url != activeUrl) {
             await notifier.setUrl(url);
             if (context.mounted) {
+              String name;
+              if (url == BackendUrlNotifier.vercelUrl) {
+                name = 'Vercel';
+              } else if (url == BackendUrlNotifier.huggingFaceUrl) {
+                name = 'Hugging Face';
+              } else {
+                name = 'Render';
+              }
               ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    "Switched to ${url == BackendUrlNotifier.huggingFaceUrl ? 'Hugging Face' : 'Render'} server",
+                    "Switched to $name server",
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                   ),
                   backgroundColor: AppTheme.primary,
@@ -54,10 +71,20 @@ class ServerSwitcherWidget extends ConsumerWidget {
         },
         itemBuilder: (context) => [
           const PopupMenuItem(
+            value: BackendUrlNotifier.vercelUrl,
+            child: Row(
+              children: [
+                Icon(Icons.bolt, color: AppTheme.primary, size: 18),
+                SizedBox(width: 8),
+                Text("Vercel (Edge)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          const PopupMenuItem(
             value: BackendUrlNotifier.huggingFaceUrl,
             child: Row(
               children: [
-                Icon(Icons.bolt, color: AppTheme.success, size: 18),
+                Icon(Icons.cloud_done_outlined, color: AppTheme.success, size: 18),
                 SizedBox(width: 8),
                 Text("Hugging Face (Fast)", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
               ],
