@@ -26,7 +26,7 @@ def get_product(product_id):
     return jsonify(product.to_dict()), 200
 
 @products_bp.route('', methods=['POST'])
-@role_required('ADMIN')
+@role_required('ADMIN', 'BOSS')
 def create_product():
     role, user_id = get_current_user_role_and_id()
     data = request.get_json() or {}
@@ -56,7 +56,7 @@ def create_product():
     return jsonify(product.to_dict()), 201
 
 @products_bp.route('/<uuid:product_id>', methods=['PUT'])
-@role_required('ADMIN')
+@role_required('ADMIN', 'BOSS')
 def update_product(product_id):
     role, user_id = get_current_user_role_and_id()
     product = Product.query.get_or_404(product_id)
@@ -86,7 +86,7 @@ def update_product(product_id):
     return jsonify(product.to_dict()), 200
 
 @products_bp.route('/<uuid:product_id>', methods=['DELETE'])
-@role_required('ADMIN')
+@role_required('ADMIN', 'BOSS')
 def delete_product(product_id):
     role, user_id = get_current_user_role_and_id()
     product = Product.query.get_or_404(product_id)

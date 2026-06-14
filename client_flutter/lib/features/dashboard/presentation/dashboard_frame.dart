@@ -11,6 +11,7 @@ import 'package:client_flutter/features/reports/presentation/reports_view.dart';
 import 'package:client_flutter/features/notifications/presentation/notifications_view.dart';
 import 'package:client_flutter/features/dashboard/presentation/boss_analytics_view.dart';
 import 'package:client_flutter/features/dashboard/presentation/boss_audit_logs_view.dart';
+import 'package:client_flutter/features/products/presentation/products_view.dart';
 
 // Local view manager state provider
 final activeMenuIndexProvider = StateProvider<int>((ref) => 0);
@@ -47,6 +48,7 @@ class DashboardFrame extends ConsumerWidget {
                 {'title': 'Dashboard', 'icon': Icons.analytics_outlined},
                 {'title': 'Contacts', 'icon': Icons.contact_phone_outlined},
                 {'title': 'Reports', 'icon': Icons.description_outlined},
+                {'title': 'Products', 'icon': Icons.shopping_bag_outlined},
                 {'title': 'Personnel', 'icon': Icons.badge_outlined},
                 {'title': 'Audit Logs', 'icon': Icons.fingerprint_outlined},
                 {'title': 'Notifications', 'icon': Icons.notifications_none_outlined},
@@ -72,12 +74,15 @@ class DashboardFrame extends ConsumerWidget {
               activeView = const ReportsView();
               break;
             case 3:
-              activeView = const ManagersListView();
+              activeView = const ProductsView();
               break;
             case 4:
-              activeView = const BossAuditLogsView();
+              activeView = const ManagersListView();
               break;
             case 5:
+              activeView = const BossAuditLogsView();
+              break;
+            case 6:
               activeView = const NotificationsView();
               break;
           }

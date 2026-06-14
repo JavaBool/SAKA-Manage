@@ -1,6 +1,9 @@
+import 'dart:convert' show utf8;
+import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/theme.dart';
 import 'package:client_flutter/features/contacts/models/contact_model.dart';
@@ -26,6 +29,285 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
     setState(() {
       _contactsFuture = ref.read(contactsRepositoryProvider).getContacts();
     });
+  }
+
+  List<List<String>> parseCSV(String text) {
+    final List<List<String>> lines = [];
+    List<String> row = [""];
+    bool inQuotes = false;
+
+    for (int i = 0; i < text.length; i++) {
+      final String char = text[i];
+      final String? nextChar = (i + 1 < text.length) ? text[i + 1] : null;
+
+      if (char == '"') {
+        if (inQuotes && nextChar == '"') {
+          row[row.length - 1] += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char == ',' && !inQuotes) {
+        row.add('');
+      } else if ((char == '\r' || char == '\n') && !inQuotes) {
+        if (char == '\r' && nextChar == '\n') {
+          i++;
+        }
+        lines.add(row);
+        row = [''];
+      } else {
+        row[row.length - 1] += char;
+      }
+    }
+    if (row.length > 1 || row[0].isNotEmpty) {
+      lines.add(row);
+    }
+    return lines;
+  }
+
+  Map<String, int> mapHeaders(List<String> headers) {
+    final Map<String, int> mapping = {};
+    for (int idx = 0; idx < headers.length; idx++) {
+      final clean = headers[idx].trim().toLowerCase();
+      if (clean == 'name' || clean == 'full name' || clean == 'contact name') {
+        mapping['name'] = idx;
+      } else if (clean == 'company' || clean == 'company name' || clean == 'organization') {
+        mapping['company'] = idx;
+      } else if (clean == 'designation' || clean == 'title' || clean == 'role' || clean == 'job title') {
+        mapping['designation'] = idx;
+      } else if (clean == 'phone' || clean == 'phone number' || clean == 'tel' || clean == 'mobile') {
+        mapping['phone'] = idx;
+      } else if (clean == 'email' || clean == 'email address') {
+        mapping['email'] = idx;
+      } else if (clean == 'address' || clean == 'street' || clean == 'location') {
+        mapping['address'] = idx;
+      } else if (clean == 'website' || clean == 'url' || clean == 'web') {
+        mapping['website'] = idx;
+      }
+    }
+    return mapping;
+  }
+
+  Future<void> _importCsv() async {
+    try {
+      final FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      String csvText = "";
+
+      if (file.bytes != null) {
+        csvText = utf8.decode(file.bytes!);
+      } else if (file.path != null) {
+        final ioFile = io.File(file.path!);
+        csvText = await ioFile.readAsString();
+      } else {
+        return;
+      }
+
+      final lines = parseCSV(csvText);
+      if (lines.length < 2) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('The selected CSV file appears to be empty or invalid.')),
+          );
+        }
+        return;
+      }
+
+      final headers = lines[0];
+      final mapping = mapHeaders(headers);
+
+      if (mapping['name'] == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('The CSV file must contain a "Name" column.')),
+          );
+        }
+        return;
+      }
+
+      final List<Map<String, String>> contactsToImport = [];
+      for (int i = 1; i < lines.length; i++) {
+        final values = lines[i];
+        if (values.length < headers.length) continue;
+
+        final Map<String, String> contact = {};
+        if (mapping['name'] != null) contact['name'] = values[mapping['name']!].trim();
+        if (mapping['company'] != null) contact['company'] = values[mapping['company']!].trim();
+        if (mapping['designation'] != null) contact['designation'] = values[mapping['designation']!].trim();
+        if (mapping['phone'] != null) contact['phone'] = values[mapping['phone']!].trim();
+        if (mapping['email'] != null) contact['email'] = values[mapping['email']!].trim();
+        if (mapping['website'] != null) contact['website'] = values[mapping['website']!].trim();
+        if (mapping['address'] != null) contact['address'] = values[mapping['address']!].trim();
+
+        if (contact['name'] != null && contact['name']!.isNotEmpty) {
+          contactsToImport.add(contact);
+        }
+      }
+
+      if (contactsToImport.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No valid contacts found in the CSV.')),
+          );
+        }
+        return;
+      }
+
+      final allContacts = await _contactsFuture;
+      final Map<String, ContactModel> existingContacts = {};
+      for (var c in allContacts) {
+        existingContacts[c.name.trim().toLowerCase()] = c;
+      }
+
+      if (!mounted) return;
+
+      int importedCount = 0;
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text("Importing contacts...", style: TextStyle(color: AppTheme.textMain)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      try {
+        for (var contact in contactsToImport) {
+          final String name = contact['name']!;
+          final String lowerName = name.trim().toLowerCase();
+
+          if (existingContacts.containsKey(lowerName)) {
+            if (context.mounted) Navigator.pop(context);
+
+            final resolutionResult = await showDialog<Map<String, dynamic>>(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => ConflictResolutionDialog(contactName: name),
+            );
+
+            if (mounted) {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => const Center(
+                  child: Card(
+                    child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text("Importing contacts...", style: TextStyle(color: AppTheme.textMain)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            final action = resolutionResult?['action'] as ConflictResolution?;
+            if (action == null || action == ConflictResolution.discard) {
+              continue;
+            }
+
+            if (action == ConflictResolution.update) {
+              final existing = existingContacts[lowerName]!;
+              final payload = {
+                'name': name,
+                'company': contact['company']?.isNotEmpty == true ? contact['company'] : (existing.company ?? ''),
+                'designation': contact['designation']?.isNotEmpty == true ? contact['designation'] : (existing.designation ?? ''),
+                'phone': contact['phone']?.isNotEmpty == true ? contact['phone'] : (existing.phone ?? ''),
+                'email': contact['email']?.isNotEmpty == true ? contact['email'] : (existing.email ?? ''),
+                'website': contact['website']?.isNotEmpty == true ? contact['website'] : (existing.website ?? ''),
+                'address': contact['address']?.isNotEmpty == true ? contact['address'] : (existing.address ?? ''),
+                'assigned_manager_id': existing.assignedManagerId,
+              };
+              await ref.read(contactsRepositoryProvider).updateContact(existing.id, payload);
+            } else if (action == ConflictResolution.rename) {
+              final String newName = resolutionResult?['name'] as String;
+              final payload = {
+                'name': newName,
+                'company': contact['company']?.isNotEmpty == true ? contact['company'] : null,
+                'designation': contact['designation']?.isNotEmpty == true ? contact['designation'] : null,
+                'phone': contact['phone']?.isNotEmpty == true ? contact['phone'] : null,
+                'email': contact['email']?.isNotEmpty == true ? contact['email'] : null,
+                'website': contact['website']?.isNotEmpty == true ? contact['website'] : null,
+                'address': contact['address']?.isNotEmpty == true ? contact['address'] : null,
+              };
+              await ref.read(contactsRepositoryProvider).createContact(payload);
+              existingContacts[newName.trim().toLowerCase()] = ContactModel(
+                id: '',
+                name: newName,
+                company: payload['company'],
+                designation: payload['designation'],
+                phone: payload['phone'],
+                email: payload['email'],
+                website: payload['website'],
+                address: payload['address'],
+              );
+            }
+          } else {
+            final payload = {
+              'name': name,
+              'company': contact['company']?.isNotEmpty == true ? contact['company'] : null,
+              'designation': contact['designation']?.isNotEmpty == true ? contact['designation'] : null,
+              'phone': contact['phone']?.isNotEmpty == true ? contact['phone'] : null,
+              'email': contact['email']?.isNotEmpty == true ? contact['email'] : null,
+              'website': contact['website']?.isNotEmpty == true ? contact['website'] : null,
+              'address': contact['address']?.isNotEmpty == true ? contact['address'] : null,
+            };
+            await ref.read(contactsRepositoryProvider).createContact(payload);
+            existingContacts[lowerName] = ContactModel(
+              id: '',
+              name: name,
+              company: payload['company'],
+              designation: payload['designation'],
+              phone: payload['phone'],
+              email: payload['email'],
+              website: payload['website'],
+              address: payload['address'],
+            );
+          }
+          importedCount++;
+        }
+      } finally {
+        if (context.mounted) Navigator.pop(context);
+      }
+
+      _refreshContacts();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Successfully imported $importedCount contacts.')),
+        );
+      }
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error importing CSV: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _launchUrl(String urlString) async {
@@ -314,17 +596,34 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Client Directory", style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 8),
-                    const Text("List of contacts and organizations assigned to you.", style: TextStyle(color: AppTheme.textMuted)),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Client Directory", style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 8),
+                      const Text("List of contacts and organizations assigned to you.", style: TextStyle(color: AppTheme.textMuted)),
+                    ],
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: AppTheme.primary),
-                  onPressed: _refreshContacts,
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _importCsv,
+                      icon: const Icon(Icons.upload_file, size: 18),
+                      label: const Text("Import CSV"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.darkCard,
+                        foregroundColor: AppTheme.textMain,
+                        side: const BorderSide(color: AppTheme.borderColor),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: AppTheme.primary),
+                      onPressed: _refreshContacts,
+                    ),
+                  ],
                 )
               ],
             ),
@@ -489,6 +788,110 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
           ],
         ),
       ),
+    );
+  }
+}
+
+enum ConflictResolution { update, rename, discard }
+
+class ConflictResolutionDialog extends StatefulWidget {
+  final String contactName;
+
+  const ConflictResolutionDialog({super.key, required this.contactName});
+
+  @override
+  State<ConflictResolutionDialog> createState() => _ConflictResolutionDialogState();
+}
+
+class _ConflictResolutionDialogState extends State<ConflictResolutionDialog> {
+  final _nameController = TextEditingController();
+  bool _showRenameField = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = "${widget.contactName} (Copy)";
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppTheme.darkCard,
+      title: const Text('Duplicate Contact Detected', style: TextStyle(color: AppTheme.textMain)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'A contact with the name "${widget.contactName}" already exists in the system.',
+              style: const TextStyle(color: AppTheme.textMuted),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Please choose how you would like to resolve this conflict:',
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+            ),
+            if (_showRenameField) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                style: const TextStyle(color: AppTheme.textMain),
+                decoration: const InputDecoration(
+                  labelText: 'New Unique Name',
+                  labelStyle: TextStyle(color: AppTheme.textMuted),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context, {'action': ConflictResolution.discard});
+          },
+          child: const Text('Discard', style: TextStyle(color: AppTheme.danger)),
+        ),
+        if (!_showRenameField)
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _showRenameField = true;
+              });
+            },
+            child: const Text('Rename & Add', style: TextStyle(color: AppTheme.textMain)),
+          )
+        else
+          TextButton(
+            onPressed: () {
+              final newName = _nameController.text.trim();
+              if (newName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('New name cannot be empty')),
+                );
+                return;
+              }
+              Navigator.pop(context, {
+                'action': ConflictResolution.rename,
+                'name': newName,
+              });
+            },
+            child: const Text('Save Renamed', style: TextStyle(color: AppTheme.primary)),
+          ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context, {'action': ConflictResolution.update});
+          },
+          child: const Text('Update Details'),
+        ),
+      ],
     );
   }
 }

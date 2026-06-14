@@ -43,4 +43,34 @@ class ProductsRepository {
     final List<Map<String, dynamic>> maps = await db.query('products');
     return maps.map((json) => ProductModel.fromJson(json)).toList();
   }
+
+  Future<bool> createProduct(Map<String, dynamic> payload) async {
+    try {
+      final response = await apiClient.post('/products', data: payload);
+      return response.statusCode == 201;
+    } catch (e) {
+      print("Error creating product: $e");
+      rethrow;
+    }
+  }
+
+  Future<bool> updateProduct(String id, Map<String, dynamic> payload) async {
+    try {
+      final response = await apiClient.put('/products/$id', data: payload);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating product: $e");
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteProduct(String id) async {
+    try {
+      final response = await apiClient.delete('/products/$id');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print("Error deleting product: $e");
+      rethrow;
+    }
+  }
 }

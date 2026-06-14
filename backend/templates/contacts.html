@@ -6,9 +6,14 @@
         <h4 class="m-0 font-weight-700">Client Contacts</h4>
         <p class="text-muted small m-0">Manage customer contacts and assign them to specific managers.</p>
     </div>
-    <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#createContactModal">
-        <i class="fa-solid fa-address-card me-1"></i> Add Contact
-    </button>
+    <div class="d-flex gap-2">
+        <button type="button" class="btn btn-outline-light btn-dark-custom" id="btn-import-csv">
+            <i class="fa-solid fa-file-import me-1"></i> Import CSV
+        </button>
+        <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#createContactModal">
+            <i class="fa-solid fa-address-card me-1"></i> Add Contact
+        </button>
+    </div>
 </div>
 
 <div class="glass-card">
@@ -198,6 +203,35 @@
         </div>
     </div>
 </div>
+
+<!-- Conflict Resolution Modal -->
+<div class="modal fade" id="conflictModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-custom">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title font-weight-700">Duplicate Contact Detected</h5>
+            </div>
+            <div class="modal-body">
+                <p>A contact with the name <strong id="conflict-contact-name" class="text-accent"></strong> already exists in the system.</p>
+                <p class="text-muted small">Please choose how you would like to resolve this conflict:</p>
+                
+                <div class="mb-3">
+                    <label for="conflict-new-name" class="form-label text-muted small">New Name (required for Rename & Add)</label>
+                    <input type="text" class="form-control form-control-custom" id="conflict-new-name" placeholder="e.g. John Doe (New)">
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-custom d-flex justify-content-between">
+                <button type="button" class="btn btn-dark-custom text-danger" id="btn-resolve-discard">Discard Record</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-dark-custom text-light" id="btn-resolve-rename">Rename & Add</button>
+                    <button type="button" class="btn btn-accent" id="btn-resolve-update">Update Details</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="csv-file-input" accept=".csv" style="display: none;">
 {% endblock %}
 
 {% block scripts %}
@@ -318,6 +352,260 @@
                 }
             });
         });
+
+        // CSV Import Trigger
+        const btnImportCsv = document.getElementById('btn-import-csv');
+        const csvFileInput = document.getElementById('csv-file-input');
+
+        btnImportCsv.addEventListener('click', () => {
+            csvFileInput.click();
+        });
+
+        csvFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const text = await file.text();
+            csvFileInput.value = ''; // Reset file input
+
+            const lines = parseCSV(text);
+            if (lines.length < 2) {
+                alert('The selected CSV file appears to be empty or invalid.');
+                return;
+            }
+
+            const headers = lines[0];
+            const mapping = mapHeaders(headers);
+
+            if (mapping['name'] === undefined) {
+                alert('The CSV file must contain a "Name" column.');
+                return;
+            }
+
+            const contactsToImport = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i];
+                if (values.length < headers.length) continue;
+                
+                const contact = {};
+                if (mapping['name'] !== undefined) contact.name = values[mapping['name']].trim();
+                if (mapping['company'] !== undefined) contact.company = values[mapping['company']].trim();
+                if (mapping['designation'] !== undefined) contact.designation = values[mapping['designation']].trim();
+                if (mapping['phone'] !== undefined) contact.phone = values[mapping['phone']].trim();
+                if (mapping['email'] !== undefined) contact.email = values[mapping['email']].trim();
+                if (mapping['website'] !== undefined) contact.website = values[mapping['website']].trim();
+                if (mapping['address'] !== undefined) contact.address = values[mapping['address']].trim();
+
+                if (contact.name) {
+                    contactsToImport.push(contact);
+                }
+            }
+
+            if (contactsToImport.length === 0) {
+                alert('No valid contacts found in the CSV.');
+                return;
+            }
+
+            // Build map of existing contacts from table
+            const existingContacts = {};
+            document.querySelectorAll('.btn-edit-contact').forEach(btn => {
+                existingContacts[btn.dataset.name.trim().toLowerCase()] = btn.dataset.id;
+            });
+
+            const originalBtnHtml = btnImportCsv.innerHTML;
+            btnImportCsv.disabled = true;
+
+            try {
+                for (let i = 0; i < contactsToImport.length; i++) {
+                    btnImportCsv.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Importing (${i + 1}/${contactsToImport.length})...`;
+                    const contact = contactsToImport[i];
+                    const lowerName = contact.name.trim().toLowerCase();
+
+                    if (existingContacts[lowerName]) {
+                        const existingId = existingContacts[lowerName];
+                        const resolution = await promptConflict(contact.name);
+                        
+                        if (resolution.action === 'update') {
+                            await updateImportContact(existingId, contact);
+                        } else if (resolution.action === 'rename') {
+                            contact.name = resolution.newName;
+                            await createImportContact(contact);
+                            existingContacts[resolution.newName.trim().toLowerCase()] = true;
+                        } else if (resolution.action === 'discard') {
+                            continue;
+                        }
+                    } else {
+                        await createImportContact(contact);
+                        existingContacts[lowerName] = true;
+                    }
+                }
+                window.location.reload();
+            } catch (err) {
+                alert('An error occurred during import: ' + err.message);
+                window.location.reload();
+            } finally {
+                btnImportCsv.disabled = false;
+                btnImportCsv.innerHTML = originalBtnHtml;
+            }
+        });
+
+        function parseCSV(text) {
+            const lines = [];
+            let row = [""];
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const nextChar = text[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        row[row.length - 1] += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    row.push('');
+                } else if ((char === '\r' || char === '\n') && !inQuotes) {
+                    if (char === '\r' && nextChar === '\n') {
+                        i++;
+                    }
+                    lines.push(row);
+                    row = [''];
+                } else {
+                    row[row.length - 1] += char;
+                }
+            }
+            if (row.length > 1 || row[0] !== '') {
+                lines.push(row);
+            }
+            return lines;
+        }
+
+        function mapHeaders(headers) {
+            const mapping = {};
+            headers.forEach((h, idx) => {
+                const clean = h.trim().toLowerCase();
+                if (clean === 'name' || clean === 'full name' || clean === 'contact name') {
+                    mapping['name'] = idx;
+                } else if (clean === 'company' || clean === 'company name' || clean === 'organization') {
+                    mapping['company'] = idx;
+                } else if (clean === 'designation' || clean === 'title' || clean === 'role' || clean === 'job title') {
+                    mapping['designation'] = idx;
+                } else if (clean === 'phone' || clean === 'phone number' || clean === 'tel' || clean === 'mobile') {
+                    mapping['phone'] = idx;
+                } else if (clean === 'email' || clean === 'email address') {
+                    mapping['email'] = idx;
+                } else if (clean === 'address' || clean === 'street' || clean === 'location') {
+                    mapping['address'] = idx;
+                } else if (clean === 'website' || clean === 'url' || clean === 'web') {
+                    mapping['website'] = idx;
+                }
+            });
+            return mapping;
+        }
+
+        function promptConflict(contactName) {
+            return new Promise((resolve) => {
+                const modalEl = document.getElementById('conflictModal');
+                const modal = new bootstrap.Modal(modalEl);
+                
+                document.getElementById('conflict-contact-name').innerText = contactName;
+                document.getElementById('conflict-new-name').value = contactName + ' (Copy)';
+                
+                const btnDiscard = document.getElementById('btn-resolve-discard');
+                const btnRename = document.getElementById('btn-resolve-rename');
+                const btnUpdate = document.getElementById('btn-resolve-update');
+                
+                const cleanup = (resolution) => {
+                    btnDiscard.removeEventListener('click', onDiscard);
+                    btnRename.removeEventListener('click', onRename);
+                    btnUpdate.removeEventListener('click', onUpdate);
+                    modal.hide();
+                    
+                    setTimeout(() => {
+                        resolve(resolution);
+                    }, 300);
+                };
+                
+                function onDiscard() {
+                    cleanup({ action: 'discard' });
+                }
+                
+                function onRename() {
+                    const newName = document.getElementById('conflict-new-name').value.trim();
+                    if (!newName) {
+                        alert('A new name is required for Rename & Add.');
+                        return;
+                    }
+                    cleanup({ action: 'rename', newName: newName });
+                }
+                
+                function onUpdate() {
+                    cleanup({ action: 'update' });
+                }
+                
+                btnDiscard.addEventListener('click', onDiscard);
+                btnRename.addEventListener('click', onRename);
+                btnUpdate.addEventListener('click', onUpdate);
+                
+                modal.show();
+            });
+        }
+
+        async function createImportContact(contact) {
+            const payload = {
+                name: contact.name,
+                company: contact.company || null,
+                designation: contact.designation || null,
+                phone: contact.phone || null,
+                email: contact.email || null,
+                website: contact.website || null,
+                address: contact.address || null,
+                assigned_manager_id: null
+            };
+            const response = await fetch('/api/v1/contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to create contact');
+            }
+        }
+
+        async function updateImportContact(id, contact) {
+            const btn = document.querySelector(`.btn-edit-contact[data-id="${id}"]`);
+            const currentCompany = btn ? btn.dataset.company : '';
+            const currentDesignation = btn ? btn.dataset.designation : '';
+            const currentEmail = btn ? btn.dataset.email : '';
+            const currentPhone = btn ? btn.dataset.phone : '';
+            const currentWebsite = btn ? btn.dataset.website : '';
+            const currentAddress = btn ? btn.dataset.address : '';
+            const currentManagerId = btn ? btn.dataset.managerId : '';
+
+            const payload = {
+                name: contact.name,
+                company: contact.company || currentCompany || null,
+                designation: contact.designation || currentDesignation || null,
+                phone: contact.phone || currentPhone || null,
+                email: contact.email || currentEmail || null,
+                website: contact.website || currentWebsite || null,
+                address: contact.address || currentAddress || null,
+                assigned_manager_id: currentManagerId || null
+            };
+            const response = await fetch(`/api/v1/contacts/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to update contact');
+            }
+        }
     });
 </script>
 {% endblock %}
