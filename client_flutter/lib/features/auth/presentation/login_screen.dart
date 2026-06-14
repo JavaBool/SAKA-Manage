@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/theme.dart';
 
@@ -63,8 +64,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
         context.go('/');
       } else {
+        final authState = ref.read(authStateProvider);
+        String msg = "Invalid username or password credentials.";
+        if (authState is AsyncError) {
+          final err = authState.error;
+          if (err is DioException) {
+            if (err.type == DioExceptionType.connectionTimeout ||
+                err.type == DioExceptionType.receiveTimeout ||
+                err.type == DioExceptionType.connectionError) {
+              msg = "Connection error: Cannot reach server. Please check your internet connection.";
+            } else if (err.response?.statusCode == 401) {
+              msg = "Invalid username or password credentials.";
+            } else if (err.response?.statusCode != null) {
+              msg = "Server error (${err.response!.statusCode}): ${err.response!.statusMessage}";
+            } else {
+              msg = "Network error: ${err.message}";
+            }
+          } else {
+            msg = "Error: $err";
+          }
+        }
         setState(() {
-          _errorMessage = "Invalid username or password credentials.";
+          _errorMessage = msg;
         });
       }
     }

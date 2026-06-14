@@ -9,7 +9,7 @@ class ApiClient {
   // Primary API endpoint config
   static const String apiBaseUrl = String.fromEnvironment(
     'BACKEND_URL',
-    defaultValue: 'http://localhost:5000/api/v1',
+    defaultValue: 'https://saka-manage.onrender.com/api/v1',
   );
 
   ApiClient() : dio = Dio(BaseOptions(
