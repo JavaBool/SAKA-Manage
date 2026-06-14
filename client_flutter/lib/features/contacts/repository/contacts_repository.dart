@@ -44,6 +44,36 @@ class ContactsRepository {
     return maps.map((json) => ContactModel.fromJson(json)).toList();
   }
 
+  Future<ContactModel?> getContactById(String id) async {
+    try {
+      final response = await apiClient.get('/contacts/$id');
+      if (response.statusCode == 200) {
+        final contact = ContactModel.fromJson(response.data as Map<String, dynamic>);
+        final db = await DbHelper.database;
+        await db.insert(
+          'contacts',
+          contact.toJson(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        return contact;
+      }
+    } catch (e) {
+      print("Error fetching single contact from API: $e");
+    }
+
+    final db = await DbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'contacts',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (maps.isNotEmpty) {
+      return ContactModel.fromJson(maps.first);
+    }
+    return null;
+  }
+
   Future<bool> createContact(Map<String, dynamic> payload) async {
     try {
       final response = await apiClient.post('/contacts', data: payload);
