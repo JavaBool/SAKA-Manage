@@ -52,4 +52,31 @@ def mark_all_read():
     db.session.commit()
     return jsonify({"message": f"Marked {len(notifications)} notifications as read"}), 200
 
+@notifications_bp.route('/diagnostics', methods=['GET'])
+@role_required('ADMIN', 'BOSS', 'MANAGER')
+def get_diagnostics():
+    from backend.services.notification_service import _fcm_initialized, _fcm_init_error
+    from backend.models.models import DeviceToken
+    import os
+    
+    db_type = db.engine.name
+    tokens_count = DeviceToken.query.count()
+    service_account_present = bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"))
+    
+    import firebase_admin
+    try:
+        firebase_admin.get_app()
+        app_active = True
+    except ValueError:
+        app_active = False
+
+    return jsonify({
+        "fcm_initialized": _fcm_initialized,
+        "fcm_init_error": _fcm_init_error,
+        "firebase_app_active": app_active,
+        "service_account_json_present": service_account_present,
+        "database_type": db_type,
+        "registered_device_tokens_count": tokens_count
+    }), 200
+
 

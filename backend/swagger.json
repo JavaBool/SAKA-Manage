@@ -431,6 +431,16 @@
         }
       }
     },
+    "/notifications/diagnostics": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Retrieve FCM and database diagnostics (Admin/Boss/Manager)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Diagnostics statistics" }
+        }
+      }
+    },
     "/analytics": {
       "get": {
         "tags": ["Analytics"],

@@ -134,6 +134,7 @@ def test_push():
         }), 400
         
     # Check if Firebase has been initialized
+    from backend.services.notification_service import _fcm_initialized, _fcm_init_error
     try:
         firebase_admin.get_app()
         fcm_initialized = True
@@ -145,7 +146,7 @@ def test_push():
         return jsonify({
             "success": True,
             "mock": True,
-            "message": "FCM is not initialized (no service account). Simulated push successfully.",
+            "message": f"FCM is not initialized (no service account). {_fcm_init_error or ''}. Simulated push successfully.",
             "firebase_admin_version": firebase_admin.__version__,
             "logged": "Token count: 1, Success: 1 (Mocked), Failure: 0"
         }), 200

@@ -13,6 +13,7 @@ from backend.services.audit_service import log_action
 
 # Initialize Firebase SDK
 _fcm_initialized = False
+_fcm_init_error = None
 try:
     # Try getting default app
     firebase_admin.get_app()
@@ -22,24 +23,40 @@ except ValueError:
     fcm_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
     if fcm_json:
         try:
-            # We can write the json string to a temporary file
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_f:
-                temp_f.write(fcm_json)
-                temp_path = temp_f.name
-            
-            cred = credentials.Certificate(temp_path)
-            firebase_admin.initialize_app(cred)
-            _fcm_initialized = True
-            print("Firebase Admin SDK initialized successfully.")
-            # Delete temporary file
+            # Attempt to parse as JSON string first to initialize directly without temp files
             try:
-                os.unlink(temp_path)
-            except Exception:
-                pass
+                service_account_info = json.loads(fcm_json)
+                cred = credentials.Certificate(service_account_info)
+                firebase_admin.initialize_app(cred)
+                _fcm_initialized = True
+                print("Firebase Admin SDK initialized successfully via service account JSON dict.")
+            except (json.JSONDecodeError, TypeError) as je:
+                # Fallback to treating it as a filepath if it's not a valid JSON string
+                if os.path.exists(fcm_json):
+                    cred = credentials.Certificate(fcm_json)
+                    firebase_admin.initialize_app(cred)
+                    _fcm_initialized = True
+                    print(f"Firebase Admin SDK initialized successfully via file path: {fcm_json}")
+                else:
+                    # Try using a temporary file as a last resort
+                    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as temp_f:
+                        temp_f.write(fcm_json)
+                        temp_path = temp_f.name
+                    
+                    cred = credentials.Certificate(temp_path)
+                    firebase_admin.initialize_app(cred)
+                    _fcm_initialized = True
+                    print("Firebase Admin SDK initialized successfully via temp file fallback.")
+                    try:
+                        os.unlink(temp_path)
+                    except Exception:
+                        pass
         except Exception as e:
-            print(f"Error initializing Firebase Admin: {str(e)}", file=sys.stderr)
+            _fcm_init_error = f"Error initializing Firebase Admin: {str(e)}"
+            print(_fcm_init_error, file=sys.stderr)
     else:
-        print("Firebase Admin service account JSON not provided in environment. Running in mock FCM mode.", file=sys.stderr)
+        _fcm_init_error = "Firebase Admin service account JSON not provided in environment."
+        print(_fcm_init_error, file=sys.stderr)
 
 def create_and_send_notification(recipient_user_id, title, message, entity_type=None, entity_id=None, return_summary=False):
     """
