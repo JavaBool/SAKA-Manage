@@ -12,8 +12,37 @@ import 'package:client_flutter/features/notifications/repository/notifications_r
 import 'package:client_flutter/core/sync_controller.dart';
 
 // Core Providers
+final backendUrlProvider = StateNotifierProvider<BackendUrlNotifier, String>((ref) {
+  return BackendUrlNotifier(ref.watch(storageProvider));
+});
+
+class BackendUrlNotifier extends StateNotifier<String> {
+  final FlutterSecureStorage _storage;
+  static const String key = 'selected_backend_url';
+
+  static const String huggingFaceUrl = 'https://javabool-sakamanage.hf.space/api/v1';
+  static const String renderUrl = 'https://saka-manage.onrender.com/api/v1';
+
+  BackendUrlNotifier(this._storage) : super(huggingFaceUrl) {
+    _loadUrl();
+  }
+
+  Future<void> _loadUrl() async {
+    final saved = await _storage.read(key: key);
+    if (saved != null && (saved == renderUrl || saved == huggingFaceUrl)) {
+      state = saved;
+    }
+  }
+
+  Future<void> setUrl(String url) async {
+    await _storage.write(key: key, value: url);
+    state = url;
+  }
+}
+
 final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((Ref ref) {
-  final client = ApiClient();
+  final activeUrl = ref.watch(backendUrlProvider);
+  final client = ApiClient(baseUrl: activeUrl);
   client.onUnauthorized = () {
     ref.read(authStateProvider.notifier).logout();
   };

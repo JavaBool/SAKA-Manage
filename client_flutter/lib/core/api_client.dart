@@ -9,11 +9,11 @@ class ApiClient {
   // Primary API endpoint config
   static const String apiBaseUrl = String.fromEnvironment(
     'BACKEND_URL',
-    defaultValue: 'https://saka-manage.onrender.com/api/v1',
+    defaultValue: 'https://javabool-sakamanage.hf.space/api/v1',
   );
 
-  ApiClient() : dio = Dio(BaseOptions(
-    baseUrl: apiBaseUrl,
+  ApiClient({String? baseUrl}) : dio = Dio(BaseOptions(
+    baseUrl: baseUrl ?? apiBaseUrl,
     connectTimeout: const Duration(seconds: 90),
     receiveTimeout: const Duration(seconds: 90),
   )) {

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/theme.dart';
 import 'package:client_flutter/features/auth/models/user_model.dart';
+import 'package:client_flutter/core/server_switcher.dart';
 
 // Views
 import 'package:client_flutter/features/contacts/presentation/contacts_view.dart';
@@ -233,8 +234,17 @@ class DashboardFrame extends ConsumerWidget {
               width: 240,
               child: buildSidebarContent(inDrawer: true),
             ),
-            body: SafeArea(
-              child: activeView,
+            body: Stack(
+              children: [
+                SafeArea(
+                  child: activeView,
+                ),
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: const ServerSwitcherWidget(),
+                ),
+              ],
             ),
           );
         }
@@ -251,8 +261,17 @@ class DashboardFrame extends ConsumerWidget {
               const VerticalDivider(width: 1, color: AppTheme.borderColor),
               // Main content area
               Expanded(
-                child: SafeArea(
-                  child: activeView,
+                child: Stack(
+                  children: [
+                    SafeArea(
+                      child: activeView,
+                    ),
+                    Positioned(
+                      bottom: 16,
+                      right: 16,
+                      child: const ServerSwitcherWidget(),
+                    ),
+                  ],
                 ),
               ),
             ],

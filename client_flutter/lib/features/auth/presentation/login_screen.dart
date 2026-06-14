@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/theme.dart';
+import 'package:client_flutter/core/server_switcher.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -101,118 +102,127 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 400),
-            padding: const EdgeInsets.all(32.0),
-            decoration: BoxDecoration(
-              color: AppTheme.darkCard,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderColor),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Icon(
-                    Icons.dashboard_customize_outlined,
-                    size: 64,
-                    color: AppTheme.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "SAKA Manage",
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Customer Feedback Reporting",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
-                  ),
-                  const SizedBox(height: 32),
-                  if (_errorMessage != null) ...[
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.danger.withOpacity(0.15),
-                        border: Border.all(color: AppTheme.danger.withOpacity(0.3)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: AppTheme.textMain, fontSize: 13),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: "Username",
-                      prefixIcon: Icon(Icons.person_outline, color: AppTheme.textMuted),
-                    ),
-                    validator: (val) => val == null || val.trim().isEmpty
-                        ? "Username is required"
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: "Password",
-                      prefixIcon: Icon(Icons.lock_outline, color: AppTheme.textMuted),
-                    ),
-                    validator: (val) => val == null || val.isEmpty
-                        ? "Password is required"
-                        : null,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Checkbox(
-                        value: _rememberMe,
-                        activeColor: AppTheme.primary,
-                        onChanged: (val) {
-                          setState(() {
-                            _rememberMe = val ?? false;
-                          });
-                        },
-                      ),
-                      const Text(
-                        "Remember Me",
-                        style: TextStyle(color: AppTheme.textMain, fontSize: 14),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  padding: const EdgeInsets.all(32.0),
+                  decoration: BoxDecoration(
+                    color: AppTheme.darkCard,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.borderColor),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-                      : ElevatedButton(
-                          onPressed: _handleLogin,
-                          child: const Text("LOGIN"),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Icon(
+                          Icons.dashboard_customize_outlined,
+                          size: 64,
+                          color: AppTheme.primary,
                         ),
-                ],
+                        const SizedBox(height: 16),
+                        Text(
+                          "SAKA Manage",
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          "Customer Feedback Reporting",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppTheme.textMuted, fontSize: 14),
+                        ),
+                        const SizedBox(height: 32),
+                        if (_errorMessage != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.danger.withOpacity(0.15),
+                              border: Border.all(color: AppTheme.danger.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: AppTheme.textMain, fontSize: 13),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        TextFormField(
+                          controller: _usernameController,
+                          decoration: const InputDecoration(
+                            labelText: "Username",
+                            prefixIcon: Icon(Icons.person_outline, color: AppTheme.textMuted),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty
+                              ? "Username is required"
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: "Password",
+                            prefixIcon: Icon(Icons.lock_outline, color: AppTheme.textMuted),
+                          ),
+                          validator: (val) => val == null || val.isEmpty
+                              ? "Password is required"
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _rememberMe,
+                              activeColor: AppTheme.primary,
+                              onChanged: (val) {
+                                setState(() {
+                                  _rememberMe = val ?? false;
+                                });
+                              },
+                            ),
+                            const Text(
+                              "Remember Me",
+                              style: TextStyle(color: AppTheme.textMain, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        _isLoading
+                            ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                            : ElevatedButton(
+                                onPressed: _handleLogin,
+                                child: const Text("LOGIN"),
+                              ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: const ServerSwitcherWidget(),
+          ),
+        ],
       ),
     );
   }
