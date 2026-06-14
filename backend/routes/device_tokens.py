@@ -9,7 +9,10 @@ device_tokens_bp = Blueprint('device_tokens', __name__)
 @device_tokens_bp.route('', methods=['POST'])
 @jwt_required()
 def register_token():
+    import uuid
     user_id = get_jwt_identity()
+    user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+    
     data = request.get_json() or {}
     
     platform = data.get('platform')
@@ -19,13 +22,13 @@ def register_token():
         return jsonify({"error": "platform and fcm_token are required"}), 400
         
     # Check if this token already exists for the user
-    existing = DeviceToken.query.filter_by(user_id=user_id, fcm_token=fcm_token).first()
+    existing = DeviceToken.query.filter_by(user_id=user_uuid, fcm_token=fcm_token).first()
     if existing:
         # Just update platform/created_at if needed, but it's already there
         return jsonify(existing.to_dict()), 200
         
     token = DeviceToken(
-        user_id=user_id,
+        user_id=user_uuid,
         platform=platform,
         fcm_token=fcm_token
     )

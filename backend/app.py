@@ -8,7 +8,7 @@ if _root_dir not in sys.path:
     sys.path.insert(0, _root_dir)
 
 from flask import Flask, redirect, url_for, jsonify, send_from_directory, request
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 from flask_migrate import Migrate
 from backend.config.config import Config
 from backend.models.database import db
@@ -177,6 +177,40 @@ def test_push():
             "exception_details": tb,
             "firebase_admin_version": firebase_admin.__version__,
             "logged": "Token count: 1, Success: 0, Failure: 1"
+        }), 500
+
+@app.route('/api/v1/test-notification', methods=['POST'])
+@jwt_required()
+def test_notification():
+    from backend.services.notification_service import create_and_send_notification
+    import firebase_admin
+    
+    current_user_id = get_jwt_identity()
+    
+    data = request.get_json() or {}
+    title = data.get('title', 'Test Push Notification')
+    message = data.get('message', 'This is a test notification for the currently logged in user.')
+    
+    notif = create_and_send_notification(
+        recipient_user_id=current_user_id,
+        title=title,
+        message=message,
+        entity_type="test",
+        entity_id=None
+    )
+    
+    if notif:
+        return jsonify({
+            "success": True,
+            "message": "Notification process completed.",
+            "notification_id": str(notif.id),
+            "recipient_user_id": str(current_user_id),
+            "firebase_admin_version": firebase_admin.__version__
+        }), 200
+    else:
+        return jsonify({
+            "success": False,
+            "error": "Failed to process notification."
         }), 500
 
 if __name__ == '__main__':

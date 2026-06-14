@@ -46,6 +46,12 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
     """
     Creates a notification entry in the database and sends a push notification via FCM.
     """
+    import uuid
+    if isinstance(recipient_user_id, str):
+        recipient_user_id = uuid.UUID(recipient_user_id)
+    if entity_id and isinstance(entity_id, str):
+        entity_id = uuid.UUID(entity_id)
+
     try:
         # 1. Save to DB
         notif = Notification(
@@ -114,15 +120,29 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                     success_count = batch_response.success_count
                     failure_count = batch_response.failure_count
                     
-                    print(f"FCM batch send completed. Tokens: {token_count}, Successes: {success_count}, Failures: {failure_count}")
+                    failures_list = []
+                    for idx, resp in enumerate(batch_response.responses):
+                        token = tokens[idx]
+                        if resp.success:
+                            print(f"[FCM Success Log] Token: {token[:25]}... | Message ID: {resp.message_id}")
+                        else:
+                            err_str = str(resp.exception)
+                            failures_list.append(f"Token: {token[:20]}... Error: {err_str}")
+                            print(f"[FCM Failure Log] Token: {token[:25]}... | Exception: {err_str}", file=sys.stderr)
+                            
+                            # Check for token-not-found / unregistered errors
+                            if isinstance(resp.exception, messaging.UnregisteredError):
+                                print(f"[FCM Cleanup Log] Token is unregistered. Deleting token: {token[:25]}...", file=sys.stderr)
+                                try:
+                                    DeviceToken.query.filter_by(fcm_token=token).delete()
+                                    db.session.commit()
+                                    print(f"[FCM Cleanup Success] Successfully removed invalid token from DB: {token[:20]}...", file=sys.stderr)
+                                except Exception as db_err:
+                                    db.session.rollback()
+                                    print(f"[FCM Cleanup Error] Failed to delete invalid token from DB: {str(db_err)}", file=sys.stderr)
                     
-                    if failure_count > 0:
-                        failures_list = []
-                        for idx, resp in enumerate(batch_response.responses):
-                            if not resp.success:
-                                failures_list.append(f"Token: {tokens[idx][:20]}... Error: {str(resp.exception)}")
+                    if failures_list:
                         exception_details = "\n".join(failures_list)
-                        print(f"FCM batch send failures details:\n{exception_details}", file=sys.stderr)
                 else:
                     # Fallback to individual sends
                     for token in tokens:
@@ -135,12 +155,31 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                                 ),
                                 data=data_payload
                             )
-                            messaging.send(msg)
+                            message_id = messaging.send(msg)
+                            print(f"[FCM Success Log] Token: {token[:25]}... | Message ID: {message_id}")
                             success_count += 1
+                        except messaging.UnregisteredError as unreg_err:
+                            failure_count += 1
+                            err_msg = f"Token: {token[:20]}... Error (Unregistered): {str(unreg_err)}"
+                            print(f"[FCM Failure Log] {err_msg}", file=sys.stderr)
+                            if exception_details:
+                                exception_details += f"\n{err_msg}"
+                            else:
+                                exception_details = err_msg
+                            
+                            # Cleanup
+                            print(f"[FCM Cleanup Log] Token is unregistered. Deleting token: {token[:25]}...", file=sys.stderr)
+                            try:
+                                DeviceToken.query.filter_by(fcm_token=token).delete()
+                                db.session.commit()
+                                print(f"[FCM Cleanup Success] Successfully removed invalid token from DB: {token[:20]}...", file=sys.stderr)
+                            except Exception as db_err:
+                                db.session.rollback()
+                                print(f"[FCM Cleanup Error] Failed to delete invalid token from DB: {str(db_err)}", file=sys.stderr)
                         except Exception as token_err:
                             failure_count += 1
                             err_msg = f"Token: {token[:20]}... Error: {str(token_err)}"
-                            print(f"FCM individual send error: {err_msg}", file=sys.stderr)
+                            print(f"[FCM Failure Log] {err_msg}", file=sys.stderr)
                             if exception_details:
                                 exception_details += f"\n{err_msg}"
                             else:
@@ -151,6 +190,19 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                 import traceback
                 exception_details = traceback.format_exc()
                 print(f"Failed to send FCM push notifications: {str(e)}\n{exception_details}", file=sys.stderr)
+            
+            # Detailed structured notification service run summary logging
+            summary_log = (
+                f"\n=== FCM NOTIFICATION DISPATCH RUN ===\n"
+                f"Notification ID: {notif.id}\n"
+                f"User ID        : {recipient_user_id}\n"
+                f"Total Tokens   : {token_count}\n"
+                f"Success Count  : {success_count}\n"
+                f"Failure Count  : {failure_count}\n"
+                f"Exception Logs : {exception_details or 'None'}\n"
+                f"====================================="
+            )
+            print(summary_log)
         else:
             print(f"[Mock Push Notification] To User UUID: {recipient_user_id} | Title: {title} | Message: {message}")
 
