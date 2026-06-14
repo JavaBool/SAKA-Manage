@@ -21,6 +21,7 @@
                     <th>Designation</th>
                     <th>Email Address</th>
                     <th>Phone</th>
+                    <th>Website</th>
                     <th>Assigned Manager</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -37,6 +38,15 @@
                             <td>{{ contact.email or '-' }}</td>
                             <td>{{ contact.phone or '-' }}</td>
                             <td>
+                                {% if contact.website %}
+                                    <a href="{{ contact.website }}" target="_blank" class="text-accent text-decoration-none">
+                                        <i class="fa-solid fa-globe me-1"></i>{{ contact.website }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if contact.manager %}
                                     <span class="badge bg-secondary"><i class="fa-solid fa-user-gear me-1"></i>{{ contact.manager.username }}</span>
                                 {% else %}
@@ -51,6 +61,7 @@
                                     data-designation="{{ contact.designation or '' }}" 
                                     data-email="{{ contact.email or '' }}" 
                                     data-phone="{{ contact.phone or '' }}" 
+                                    data-website="{{ contact.website or '' }}" 
                                     data-address="{{ contact.address or '' }}" 
                                     data-manager-id="{{ contact.assigned_manager_id or '' }}">
                                     <i class="fa-solid fa-pen"></i>
@@ -101,6 +112,10 @@
                     <div class="mb-3">
                         <label for="c-phone" class="form-label text-muted small">Phone Number</label>
                         <input type="text" class="form-control form-control-custom" id="c-phone" placeholder="e.g. +1 (555) 019-2834">
+                    </div>
+                    <div class="mb-3">
+                        <label for="c-website" class="form-label text-muted small">Website</label>
+                        <input type="url" class="form-control form-control-custom" id="c-website" placeholder="e.g. https://www.acme.com">
                     </div>
                     <div class="mb-3">
                         <label for="c-address" class="form-label text-muted small">Address</label>
@@ -158,6 +173,10 @@
                         <input type="text" class="form-control form-control-custom" id="e-phone">
                     </div>
                     <div class="mb-3">
+                        <label for="e-website" class="form-label text-muted small">Website</label>
+                        <input type="url" class="form-control form-control-custom" id="e-website" placeholder="e.g. https://www.acme.com">
+                    </div>
+                    <div class="mb-3">
                         <label for="e-address" class="form-label text-muted small">Address</label>
                         <textarea class="form-control form-control-custom" id="e-address" rows="2"></textarea>
                     </div>
@@ -201,6 +220,7 @@
                 designation: document.getElementById('c-designation').value,
                 email: document.getElementById('c-email').value,
                 phone: document.getElementById('c-phone').value,
+                website: document.getElementById('c-website').value,
                 address: document.getElementById('c-address').value,
                 assigned_manager_id: document.getElementById('c-manager').value || null
             };
@@ -233,6 +253,7 @@
                 document.getElementById('e-designation').value = btn.dataset.designation;
                 document.getElementById('e-email').value = btn.dataset.email;
                 document.getElementById('e-phone').value = btn.dataset.phone;
+                document.getElementById('e-website').value = btn.dataset.website;
                 document.getElementById('e-address').value = btn.dataset.address;
                 document.getElementById('e-manager').value = btn.dataset.managerId;
 
@@ -254,6 +275,7 @@
                 designation: document.getElementById('e-designation').value,
                 email: document.getElementById('e-email').value,
                 phone: document.getElementById('e-phone').value,
+                website: document.getElementById('e-website').value,
                 address: document.getElementById('e-address').value,
                 assigned_manager_id: document.getElementById('e-manager').value || null
             };

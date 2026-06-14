@@ -48,7 +48,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.value;
-    final bool isManager = user?.role == 'MANAGER';
+    final bool canCreate = user?.role == 'MANAGER' || user?.role == 'BOSS' || user?.role == 'ADMIN';
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -235,7 +235,15 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
                                       ),
                                     ),
                                   ],
-                                )
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.assignment_ind_outlined, size: 14, color: AppTheme.textMuted),
+                                    const SizedBox(width: 4),
+                                    Text("Handler: ${report.managerUsername ?? 'Unknown'}", style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -249,7 +257,7 @@ class _ReportsViewState extends ConsumerState<ReportsView> {
           ],
         ),
       ),
-      floatingActionButton: isManager
+      floatingActionButton: canCreate
           ? FloatingActionButton(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,

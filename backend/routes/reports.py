@@ -14,32 +14,20 @@ reports_bp = Blueprint('reports', __name__)
 @reports_bp.route('', methods=['GET'])
 @role_required('ADMIN', 'BOSS', 'MANAGER')
 def get_reports():
-    role, user_id = get_current_user_role_and_id()
-    
-    if role in ('ADMIN', 'BOSS'):
-        reports = Report.query.order_by(Report.created_at.desc()).all()
-    else:  # MANAGER
-        reports = Report.query.filter_by(manager_id=user_id).order_by(Report.created_at.desc()).all()
-        
+    reports = Report.query.order_by(Report.created_at.desc()).all()
     return jsonify([r.to_dict() for r in reports]), 200
 
 @reports_bp.route('/<uuid:report_id>', methods=['GET'])
 @role_required('ADMIN', 'BOSS', 'MANAGER')
 def get_report(report_id):
-    role, user_id = get_current_user_role_and_id()
     report = Report.query.get_or_404(report_id)
-    
-    if role == 'MANAGER' and str(report.manager_id) != str(user_id):
-        return jsonify({"error": "Access forbidden: This report belongs to another manager"}), 403
-        
-    # include followups and attachments in detail
     res = report.to_dict()
     res['followups'] = [f.to_dict() for f in report.followups]
     res['attachments'] = [a.to_dict() for a in report.attachments]
     return jsonify(res), 200
 
 @reports_bp.route('', methods=['POST'])
-@role_required('MANAGER')
+@role_required('ADMIN', 'BOSS', 'MANAGER')
 def create_report():
     import uuid
     role, user_id = get_current_user_role_and_id()
@@ -74,11 +62,11 @@ def create_report():
     if status not in ('open', 'followup_pending', 'closed'):
         return jsonify({"error": "Invalid status"}), 400
         
-    # Check contact is assigned to manager
+    # Check contact
     contact = Contact.query.get(db_contact_id)
     if not contact:
         return jsonify({"error": "Contact not found"}), 404
-    if contact.assigned_manager_id != user_id:
+    if role == 'MANAGER' and contact.assigned_manager_id != user_id:
         return jsonify({"error": "Contact is not assigned to you"}), 403
         
     # Check product exists
@@ -163,13 +151,14 @@ def create_report():
     return jsonify(report.to_dict()), 201
 
 @reports_bp.route('/<uuid:report_id>', methods=['PUT'])
-@role_required('MANAGER')
+@role_required('ADMIN', 'BOSS', 'MANAGER')
 def update_report(report_id):
     role, user_id = get_current_user_role_and_id()
     report = Report.query.get_or_404(report_id)
     
+    # Editing must be done only by the report creator
     if str(report.manager_id) != str(user_id):
-        return jsonify({"error": "Access forbidden: This report belongs to another manager"}), 403
+        return jsonify({"error": "Access forbidden: Editing is only allowed for the report creator"}), 403
         
     data = request.get_json() or {}
     old_value = report.to_dict()

@@ -43,4 +43,34 @@ class ContactsRepository {
     final List<Map<String, dynamic>> maps = await db.query('contacts');
     return maps.map((json) => ContactModel.fromJson(json)).toList();
   }
+
+  Future<bool> createContact(Map<String, dynamic> payload) async {
+    try {
+      final response = await apiClient.post('/contacts', data: payload);
+      return response.statusCode == 201;
+    } catch (e) {
+      print("Error creating contact: $e");
+      rethrow;
+    }
+  }
+
+  Future<bool> updateContact(String id, Map<String, dynamic> payload) async {
+    try {
+      final response = await apiClient.put('/contacts/$id', data: payload);
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error updating contact: $e");
+      rethrow;
+    }
+  }
+
+  Future<bool> deleteContact(String id) async {
+    try {
+      final response = await apiClient.delete('/contacts/$id');
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error deleting contact: $e");
+      rethrow;
+    }
+  }
 }

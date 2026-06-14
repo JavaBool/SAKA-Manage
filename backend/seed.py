@@ -69,6 +69,7 @@ def seed_data():
             phone="+1998877",
             email="alice@astra.com",
             address="100 Innovation Way, Austin, TX",
+            website="https://www.astragroup.com",
             assigned_manager_id=mgr1.id
         )
         c2 = Contact(
@@ -78,6 +79,7 @@ def seed_data():
             phone="+1223344",
             email="bob@nexus.com",
             address="500 Tech Blvd, Seattle, WA",
+            website="https://www.nexus.com",
             assigned_manager_id=mgr1.id
         )
         c3 = Contact(
@@ -87,6 +89,7 @@ def seed_data():
             phone="+1556677",
             email="charlie@summit.com",
             address="700 Mountain Ave, Denver, CO",
+            website="https://www.summitcorp.com",
             assigned_manager_id=mgr2.id
         )
         db.session.add_all([c1, c2, c3])

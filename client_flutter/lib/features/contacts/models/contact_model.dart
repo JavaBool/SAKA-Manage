@@ -6,6 +6,7 @@ class ContactModel {
   final String? phone;
   final String? email;
   final String? address;
+  final String? website;
   final String? assignedManagerId;
 
   ContactModel({
@@ -16,6 +17,7 @@ class ContactModel {
     this.phone,
     this.email,
     this.address,
+    this.website,
     this.assignedManagerId,
   });
 
@@ -28,6 +30,7 @@ class ContactModel {
       phone: json['phone'] as String?,
       email: json['email'] as String?,
       address: json['address'] as String?,
+      website: json['website'] as String?,
       assignedManagerId: json['assigned_manager_id'] as String?,
     );
   }
@@ -41,6 +44,7 @@ class ContactModel {
       'phone': phone,
       'email': email,
       'address': address,
+      'website': website,
       'assigned_manager_id': assignedManagerId,
     };
   }

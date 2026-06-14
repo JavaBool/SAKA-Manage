@@ -31,7 +31,7 @@ def get_contact(contact_id):
     return jsonify(contact.to_dict()), 200
 
 @contacts_bp.route('', methods=['POST'])
-@role_required('ADMIN')
+@role_required('ADMIN', 'BOSS', 'MANAGER')
 def create_contact():
     import uuid
     role, user_id = get_current_user_role_and_id()
@@ -43,7 +43,9 @@ def create_contact():
         
     assigned_mgr_id = data.get('assigned_manager_id')
     db_mgr_id = None
-    if assigned_mgr_id:
+    if role == 'MANAGER':
+        db_mgr_id = uuid.UUID(str(user_id))
+    elif assigned_mgr_id:
         try:
             db_mgr_id = uuid.UUID(str(assigned_mgr_id))
         except ValueError:
@@ -56,6 +58,7 @@ def create_contact():
         phone=data.get('phone'),
         email=data.get('email'),
         address=data.get('address'),
+        website=data.get('website'),
         assigned_manager_id=db_mgr_id
     )
     
@@ -74,13 +77,17 @@ def create_contact():
     return jsonify(contact.to_dict()), 201
 
 @contacts_bp.route('/<uuid:contact_id>', methods=['PUT'])
-@role_required('ADMIN')
+@role_required('ADMIN', 'BOSS', 'MANAGER')
 def update_contact(contact_id):
     import uuid
     role, user_id = get_current_user_role_and_id()
     contact = Contact.query.get_or_404(contact_id)
     data = request.get_json() or {}
     
+    # Ownership validation for Managers
+    if role == 'MANAGER' and str(contact.assigned_manager_id) != str(user_id):
+        return jsonify({"error": "Access forbidden: Contact not assigned to you"}), 403
+        
     old_value = contact.to_dict()
     
     if 'name' in data:
@@ -95,8 +102,10 @@ def update_contact(contact_id):
         contact.email = data['email']
     if 'address' in data:
         contact.address = data['address']
+    if 'website' in data:
+        contact.website = data['website']
         
-    if 'assigned_manager_id' in data:
+    if role != 'MANAGER' and 'assigned_manager_id' in data:
         assigned_mgr_id = data['assigned_manager_id']
         if assigned_mgr_id:
             try:
@@ -121,11 +130,15 @@ def update_contact(contact_id):
     return jsonify(contact.to_dict()), 200
 
 @contacts_bp.route('/<uuid:contact_id>', methods=['DELETE'])
-@role_required('ADMIN')
+@role_required('ADMIN', 'BOSS', 'MANAGER')
 def delete_contact(contact_id):
     role, user_id = get_current_user_role_and_id()
     contact = Contact.query.get_or_404(contact_id)
     
+    # Ownership validation for Managers
+    if role == 'MANAGER' and str(contact.assigned_manager_id) != str(user_id):
+        return jsonify({"error": "Access forbidden: Contact not assigned to you"}), 403
+        
     old_value = contact.to_dict()
     db.session.delete(contact)
     db.session.commit()

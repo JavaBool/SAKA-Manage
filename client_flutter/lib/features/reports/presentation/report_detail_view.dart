@@ -121,7 +121,6 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.value;
-    final bool isManager = user?.role == 'MANAGER';
 
     return Scaffold(
       appBar: AppBar(
@@ -143,6 +142,7 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
           }
 
           final report = snapshot.data!;
+          final bool isCreator = user != null && user.id == report.managerId;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -178,6 +178,17 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
                             const SizedBox(width: 6),
                             Text(
                               report.productName ?? 'Product Line',
+                              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.assignment_ind_outlined, size: 16, color: AppTheme.textMuted),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Handled by: ${report.managerUsername ?? 'Unknown'}",
                               style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
                             ),
                           ],
@@ -238,7 +249,7 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
                       "Current Ticket Status:",
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textMain),
                     ),
-                    if (isManager && report.status != 'closed')
+                    if (isCreator && report.status != 'closed')
                       Row(
                         children: [
                           ElevatedButton(
@@ -344,8 +355,8 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
                   },
                 ),
                 const SizedBox(height: 24),
-                // Log Followup notes form (for Manager only)
-                if (isManager && report.status != 'closed') ...[
+                // Log Followup notes form (for Creator only)
+                if (isCreator && report.status != 'closed') ...[
                   TextField(
                     controller: _followupController,
                     maxLines: 2,

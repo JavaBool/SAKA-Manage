@@ -54,6 +54,7 @@ class Contact(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     email = db.Column(db.String(120), nullable=True)
     address = db.Column(db.Text, nullable=True)
+    website = db.Column(db.String(255), nullable=True)
     assigned_manager_id = db.Column(db.Uuid, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -69,6 +70,7 @@ class Contact(db.Model):
             'phone': self.phone,
             'email': self.email,
             'address': self.address,
+            'website': self.website,
             'assigned_manager_id': str(self.assigned_manager_id) if self.assigned_manager_id else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
