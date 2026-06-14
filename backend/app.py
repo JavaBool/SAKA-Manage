@@ -7,7 +7,7 @@ _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _root_dir not in sys.path:
     sys.path.insert(0, _root_dir)
 
-from flask import Flask, redirect, url_for, jsonify, send_from_directory
+from flask import Flask, redirect, url_for, jsonify, send_from_directory, request
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from backend.config.config import Config
@@ -111,6 +111,73 @@ def serve_swagger_ui():
 @app.route('/')
 def home():
     return redirect(url_for('admin_db.login'))
+
+@app.route('/api/v1/test-push', methods=['POST'])
+def test_push():
+    from firebase_admin import messaging
+    import firebase_admin
+    
+    data = request.get_json() or {}
+    token = data.get('token')
+    title = data.get('title', 'Test Notification')
+    message = data.get('message', 'This is a test notification from SAKA-Manage backend.')
+    
+    if not token:
+        return jsonify({
+            "error": "token is required",
+            "firebase_admin_version": firebase_admin.__version__
+        }), 400
+        
+    # Check if Firebase has been initialized
+    try:
+        firebase_admin.get_app()
+        fcm_initialized = True
+    except ValueError:
+        fcm_initialized = False
+
+    if not fcm_initialized:
+        # Running in Mock mode
+        return jsonify({
+            "success": True,
+            "mock": True,
+            "message": "FCM is not initialized (no service account). Simulated push successfully.",
+            "firebase_admin_version": firebase_admin.__version__,
+            "logged": "Token count: 1, Success: 1 (Mocked), Failure: 0"
+        }), 200
+        
+    try:
+        data_payload = {
+            "entity_type": "test",
+            "entity_id": "",
+            "click_action": "FLUTTER_NOTIFICATION_CLICK"
+        }
+        
+        msg = messaging.Message(
+            token=token,
+            notification=messaging.Notification(
+                title=title,
+                body=message
+            ),
+            data=data_payload
+        )
+        
+        message_id = messaging.send(msg)
+        return jsonify({
+            "success": True,
+            "message_id": message_id,
+            "firebase_admin_version": firebase_admin.__version__,
+            "logged": "Token count: 1, Success: 1, Failure: 0"
+        }), 200
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "exception_details": tb,
+            "firebase_admin_version": firebase_admin.__version__,
+            "logged": "Token count: 1, Success: 0, Failure: 1"
+        }), 500
 
 if __name__ == '__main__':
     # Default execution parameters

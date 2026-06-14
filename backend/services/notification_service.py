@@ -85,6 +85,11 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
 
         # 3. Send Push Notification
         if _fcm_initialized:
+            token_count = len(tokens)
+            success_count = 0
+            failure_count = 0
+            exception_details = None
+            
             try:
                 # Prepare data payload (values must be strings)
                 data_payload = {
@@ -93,18 +98,59 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                     "click_action": "FLUTTER_NOTIFICATION_CLICK"
                 }
                 
-                msg = messaging.MulticastMessage(
-                    tokens=tokens,
-                    notification=messaging.Notification(
-                        title=title,
-                        body=message
-                    ),
-                    data=data_payload
-                )
-                response = messaging.send_multicast(msg)
-                print(f"Sent notifications via FCM. Success: {response.success_count}, Failure: {response.failure_count}")
+                print(f"FCM sending attempt initiated: total target tokens = {token_count}")
+                
+                # Check if send_each_for_multicast is supported
+                if hasattr(messaging, 'send_each_for_multicast'):
+                    msg = messaging.MulticastMessage(
+                        tokens=tokens,
+                        notification=messaging.Notification(
+                            title=title,
+                            body=message
+                        ),
+                        data=data_payload
+                    )
+                    batch_response = messaging.send_each_for_multicast(msg)
+                    success_count = batch_response.success_count
+                    failure_count = batch_response.failure_count
+                    
+                    print(f"FCM batch send completed. Tokens: {token_count}, Successes: {success_count}, Failures: {failure_count}")
+                    
+                    if failure_count > 0:
+                        failures_list = []
+                        for idx, resp in enumerate(batch_response.responses):
+                            if not resp.success:
+                                failures_list.append(f"Token: {tokens[idx][:20]}... Error: {str(resp.exception)}")
+                        exception_details = "\n".join(failures_list)
+                        print(f"FCM batch send failures details:\n{exception_details}", file=sys.stderr)
+                else:
+                    # Fallback to individual sends
+                    for token in tokens:
+                        try:
+                            msg = messaging.Message(
+                                token=token,
+                                notification=messaging.Notification(
+                                    title=title,
+                                    body=message
+                                ),
+                                data=data_payload
+                            )
+                            messaging.send(msg)
+                            success_count += 1
+                        except Exception as token_err:
+                            failure_count += 1
+                            err_msg = f"Token: {token[:20]}... Error: {str(token_err)}"
+                            print(f"FCM individual send error: {err_msg}", file=sys.stderr)
+                            if exception_details:
+                                exception_details += f"\n{err_msg}"
+                            else:
+                                exception_details = err_msg
+                    
+                    print(f"FCM individual sends completed. Tokens: {token_count}, Successes: {success_count}, Failures: {failure_count}")
             except Exception as e:
-                print(f"Failed to send FCM push notification: {str(e)}", file=sys.stderr)
+                import traceback
+                exception_details = traceback.format_exc()
+                print(f"Failed to send FCM push notifications: {str(e)}\n{exception_details}", file=sys.stderr)
         else:
             print(f"[Mock Push Notification] To User UUID: {recipient_user_id} | Title: {title} | Message: {message}")
 
