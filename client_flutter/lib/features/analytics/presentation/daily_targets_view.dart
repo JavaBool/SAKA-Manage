@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/theme.dart';
 import 'package:client_flutter/features/analytics/models/daily_target_model.dart';
+import 'package:client_flutter/features/reports/presentation/report_detail_view.dart';
 
 class DailyTargetsView extends ConsumerStatefulWidget {
   const DailyTargetsView({super.key});
@@ -18,7 +19,6 @@ class _DailyTargetsViewState extends ConsumerState<DailyTargetsView> {
   DailySummaryModel? _summary;
   bool _isLoading = true;
   bool _isSaving = false;
-  bool _isBroadcasting = false;
   String? _errorMessage;
 
   @override
@@ -85,39 +85,6 @@ class _DailyTargetsViewState extends ConsumerState<DailyTargetsView> {
     } finally {
       setState(() {
         _isSaving = false;
-      });
-    }
-  }
-
-  Future<void> _broadcastSummary() async {
-    setState(() {
-      _isBroadcasting = true;
-    });
-
-    try {
-      final repo = ref.read(analyticsRepositoryProvider);
-      final success = await repo.sendDailySummaryNotification();
-      
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Daily summary notification broadcasted to all Bosses!"),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-      } else {
-        throw Exception("Server returned non-200 status");
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error broadcasting summary: $e"),
-          backgroundColor: AppTheme.danger,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isBroadcasting = false;
       });
     }
   }
@@ -224,6 +191,8 @@ class _DailyTargetsViewState extends ConsumerState<DailyTargetsView> {
                         ],
                       ],
                     ),
+              const SizedBox(height: 24),
+              _buildTodayReportsList(summary),
             ],
           ),
         ),
@@ -413,40 +382,198 @@ class _DailyTargetsViewState extends ConsumerState<DailyTargetsView> {
                   minimumSize: const Size(double.infinity, 48),
                 ),
               ),
-              const Divider(height: 32, color: AppTheme.borderColor),
-              const Text(
-                "BROADCAST SUMMARY",
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textMuted,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Dispatch an instant FCM push notification summarizing today's goals to all active Bosses.",
-                style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: _isBroadcasting ? null : _broadcastSummary,
-                icon: _isBroadcasting 
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary),
-                      )
-                    : const Icon(Icons.campaign_outlined),
-                label: const Text("Broadcast Summary Alert"),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primary,
-                  side: const BorderSide(color: AppTheme.primary),
-                  minimumSize: const Size(double.infinity, 48),
-                ),
-              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodayReportsList(DailySummaryModel summary) {
+    final reports = summary.todayReports;
+    
+    return Card(
+      color: AppTheme.darkCard,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "TODAY'S SUBMISSIONS",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textMuted,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "${reports.length}",
+                    style: const TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (reports.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32.0),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.feed_outlined, color: AppTheme.textMuted, size: 40),
+                      SizedBox(height: 12),
+                      Text(
+                        "No reports submitted today yet.",
+                        style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: reports.length,
+                separatorBuilder: (context, index) => const Divider(color: AppTheme.borderColor, height: 24),
+                itemBuilder: (context, index) {
+                  final report = reports[index];
+                  
+                  Color priorityColor;
+                  switch (report.priority.toLowerCase()) {
+                    case 'critical':
+                      priorityColor = AppTheme.danger;
+                      break;
+                    case 'high':
+                      priorityColor = Colors.orange;
+                      break;
+                    case 'medium':
+                      priorityColor = AppTheme.warning;
+                      break;
+                    default:
+                      priorityColor = AppTheme.textMuted;
+                  }
+
+                  String typeText = report.feedbackType.replaceAll('_', ' ').toUpperCase();
+
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ReportDetailView(reportId: report.id),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.06),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                      ),
+                                      child: Text(
+                                        typeText,
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.textMain,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      report.priority.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: priorityColor,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      "${report.createdAt.hour.toString().padLeft(2, '0')}:${report.createdAt.minute.toString().padLeft(2, '0')}",
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppTheme.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  report.summary,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Contact: ${report.contactName ?? 'Unknown'} (${report.contactCompany ?? 'No Company'})",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textMuted,
+                                  ),
+                                ),
+                                if (report.managerUsername != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Submitted by: ${report.managerUsername}",
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.textMuted,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Align(
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.chevron_right,
+                              color: AppTheme.textMuted,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
         ),
       ),
     );

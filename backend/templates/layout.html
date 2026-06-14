@@ -359,6 +359,12 @@
                     <span>Settings & Health</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ url_for('admin_db.api_keys') }}" class="nav-item-link {% if request.path == url_for('admin_db.api_keys') %}active{% endif %}">
+                    <i class="fa-solid fa-key"></i>
+                    <span>API Keys</span>
+                </a>
+            </li>
         </ul>
         <div class="mt-auto">
             <a href="{{ url_for('admin_db.logout') }}" class="nav-item-link text-danger">

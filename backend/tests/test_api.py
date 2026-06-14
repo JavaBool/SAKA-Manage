@@ -208,6 +208,8 @@ def test_daily_targets(client, seed_test_data, boss_headers, manager_headers):
     assert data['progress_percentage'] == 20
     assert data['reports_count_today'] == 1
     assert data['met_target'] is False
+    assert 'today_reports' in data
+    assert len(data['today_reports']) == 1
 
     # 5. Send daily summary notification
     resp = client.post('/api/v1/analytics/send-daily-summary', headers=boss_headers)
@@ -215,3 +217,83 @@ def test_daily_targets(client, seed_test_data, boss_headers, manager_headers):
     data = resp.get_json()
     assert data['success'] is True
     assert 'Daily Summary' in data['title']
+    assert 'dispatch_results' in data
+    assert len(data['dispatch_results']) > 0
+
+def test_api_keys_authentication(client, seed_test_data):
+    from backend.models.models import APIKey
+    from backend.models.database import db
+    from datetime import datetime, timezone, timedelta
+
+    # 1. Create a valid API Key in DB
+    valid_key = APIKey(
+        name="Valid Key",
+        key="saka_key_test_valid",
+        is_active=True,
+        enable_expiry=False,
+        allowed_endpoints=["/api/v1/analytics/daily-summary", "/api/v1/analytics/send-daily-summary"]
+    )
+    db.session.add(valid_key)
+    db.session.commit()
+
+    # 2. Request daily-summary with valid key
+    resp = client.get('/api/v1/analytics/daily-summary', headers={"X-API-Key": "saka_key_test_valid"})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['target_contacts'] == 10
+
+    # 3. Request send-daily-summary with valid key
+    resp = client.post('/api/v1/analytics/send-daily-summary', headers={"X-API-Key": "saka_key_test_valid"})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['success'] is True
+    assert 'dispatch_results' in data
+
+    # 4. Create an expired key in DB
+    expired_key = APIKey(
+        name="Expired Key",
+        key="saka_key_test_expired",
+        is_active=True,
+        enable_expiry=True,
+        expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        allowed_endpoints=["/api/v1/analytics/daily-summary"]
+    )
+    db.session.add(expired_key)
+    db.session.commit()
+
+    # 5. Request with expired key (should fail with 401)
+    resp = client.get('/api/v1/analytics/daily-summary', headers={"X-API-Key": "saka_key_test_expired"})
+    assert resp.status_code == 401
+    assert "expired" in resp.get_json()['error']
+
+    # 6. Create an inactive key in DB
+    inactive_key = APIKey(
+        name="Inactive Key",
+        key="saka_key_test_inactive",
+        is_active=False,
+        enable_expiry=False,
+        allowed_endpoints=["/api/v1/analytics/daily-summary"]
+    )
+    db.session.add(inactive_key)
+    db.session.commit()
+
+    # 7. Request with inactive key (should fail with 401)
+    resp = client.get('/api/v1/analytics/daily-summary', headers={"X-API-Key": "saka_key_test_inactive"})
+    assert resp.status_code == 401
+
+    # 8. Create key with limited endpoints
+    limited_key = APIKey(
+        name="Limited Key",
+        key="saka_key_test_limited",
+        is_active=True,
+        enable_expiry=False,
+        allowed_endpoints=["/api/v1/analytics/daily-summary"]
+    )
+    db.session.add(limited_key)
+    db.session.commit()
+
+    # 9. Request unauthorized path with limited key (should fail with 403)
+    resp = client.post('/api/v1/analytics/send-daily-summary', headers={"X-API-Key": "saka_key_test_limited"})
+    assert resp.status_code == 403
+    assert "not authorized" in resp.get_json()['error']
+

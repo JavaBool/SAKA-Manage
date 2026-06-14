@@ -174,8 +174,10 @@ def set_daily_target():
 
     return jsonify(target.to_dict()), 200
 
+from backend.routes.decorators import api_key_or_role_required
+
 @analytics_bp.route('/daily-summary', methods=['GET'])
-@role_required('ADMIN', 'BOSS', 'MANAGER')
+@api_key_or_role_required('ADMIN', 'BOSS', 'MANAGER')
 def get_daily_summary():
     # Retrieve latest daily target
     target = DailyTarget.query.order_by(DailyTarget.created_at.desc()).first()
@@ -186,7 +188,7 @@ def get_daily_summary():
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     
     # Unique contacts for which reports were submitted today
-    reports_today = Report.query.filter(Report.created_at >= today_start).all()
+    reports_today = Report.query.filter(Report.created_at >= today_start).order_by(Report.created_at.desc()).all()
     unique_contacts_today = {r.contact_id for r in reports_today}
     actual_contacts_handled = len(unique_contacts_today)
     
@@ -200,11 +202,12 @@ def get_daily_summary():
         "progress_percentage": progress_percentage,
         "reports_count_today": len(reports_today),
         "met_target": actual_contacts_handled >= target_contacts,
-        "date": today_start.strftime("%Y-%m-%d")
+        "date": today_start.strftime("%Y-%m-%d"),
+        "today_reports": [r.to_dict() for r in reports_today]
     }), 200
 
 @analytics_bp.route('/send-daily-summary', methods=['POST'])
-@role_required('ADMIN', 'BOSS')
+@api_key_or_role_required('ADMIN', 'BOSS')
 def send_daily_summary_notification():
     # Calculate daily target and actuals
     target = DailyTarget.query.order_by(DailyTarget.created_at.desc()).first()
@@ -229,7 +232,7 @@ def send_daily_summary_notification():
 
     # Dispatch FCM summary to all bosses
     from backend.services.notification_service import notify_all_bosses
-    notify_all_bosses(
+    dispatch_results = notify_all_bosses(
         title=title,
         message=message,
         entity_type="daily_target",
@@ -240,5 +243,7 @@ def send_daily_summary_notification():
         "success": True,
         "title": title,
         "message": message,
-        "recipient_role": "BOSS"
+        "recipient_role": "BOSS",
+        "dispatch_results": dispatch_results
     }), 200
+

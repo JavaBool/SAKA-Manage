@@ -41,7 +41,7 @@ except ValueError:
     else:
         print("Firebase Admin service account JSON not provided in environment. Running in mock FCM mode.", file=sys.stderr)
 
-def create_and_send_notification(recipient_user_id, title, message, entity_type=None, entity_id=None):
+def create_and_send_notification(recipient_user_id, title, message, entity_type=None, entity_id=None, return_summary=False):
     """
     Creates a notification entry in the database and sends a push notification via FCM.
     """
@@ -50,6 +50,13 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
         recipient_user_id = uuid.UUID(recipient_user_id)
     if entity_id and isinstance(entity_id, str):
         entity_id = uuid.UUID(entity_id)
+
+    token_count = 0
+    success_count = 0
+    failure_count = 0
+    token_results = []
+    exception_details = None
+    notif = None
 
     try:
         # 1. Save to DB
@@ -73,20 +80,22 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
             new_value={"recipient_id": str(recipient_user_id), "title": title}
         )
 
-
-
         # 2. Get device tokens
         tokens = [t.fcm_token for t in DeviceToken.query.filter_by(user_id=recipient_user_id).all()]
+        token_count = len(tokens)
         if not tokens:
+            dispatch_summary = {
+                "token_count": 0,
+                "success_count": 0,
+                "failure_count": 0,
+                "tokens": []
+            }
+            if return_summary:
+                return notif, dispatch_summary
             return notif
 
         # 3. Send Push Notification
         if _fcm_initialized:
-            token_count = len(tokens)
-            success_count = 0
-            failure_count = 0
-            exception_details = None
-            
             try:
                 # Prepare data payload (values must be strings)
                 data_payload = {
@@ -115,11 +124,22 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                     failures_list = []
                     for idx, resp in enumerate(batch_response.responses):
                         token = tokens[idx]
+                        token_prefix = token[:15] + "..." if len(token) > 15 else token
                         if resp.success:
+                            token_results.append({
+                                "token": token_prefix,
+                                "status": "success",
+                                "message_id": resp.message_id
+                            })
                             print(f"[FCM Success Log] Token: {token[:25]}... | Message ID: {resp.message_id}")
                         else:
                             err_str = str(resp.exception)
                             failures_list.append(f"Token: {token[:20]}... Error: {err_str}")
+                            token_results.append({
+                                "token": token_prefix,
+                                "status": "failed",
+                                "error": err_str
+                            })
                             print(f"[FCM Failure Log] Token: {token[:25]}... | Exception: {err_str}", file=sys.stderr)
                             
                             # Check for token-not-found / unregistered errors
@@ -138,6 +158,7 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                 else:
                     # Fallback to individual sends
                     for token in tokens:
+                        token_prefix = token[:15] + "..." if len(token) > 15 else token
                         try:
                             msg = messaging.Message(
                                 token=token,
@@ -149,10 +170,20 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                             )
                             message_id = messaging.send(msg)
                             print(f"[FCM Success Log] Token: {token[:25]}... | Message ID: {message_id}")
+                            token_results.append({
+                                "token": token_prefix,
+                                "status": "success",
+                                "message_id": message_id
+                            })
                             success_count += 1
                         except messaging.UnregisteredError as unreg_err:
                             failure_count += 1
                             err_msg = f"Token: {token[:20]}... Error (Unregistered): {str(unreg_err)}"
+                            token_results.append({
+                                "token": token_prefix,
+                                "status": "failed",
+                                "error": str(unreg_err)
+                            })
                             print(f"[FCM Failure Log] {err_msg}", file=sys.stderr)
                             if exception_details:
                                 exception_details += f"\n{err_msg}"
@@ -171,6 +202,11 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                         except Exception as token_err:
                             failure_count += 1
                             err_msg = f"Token: {token[:20]}... Error: {str(token_err)}"
+                            token_results.append({
+                                "token": token_prefix,
+                                "status": "failed",
+                                "error": str(token_err)
+                            })
                             print(f"[FCM Failure Log] {err_msg}", file=sys.stderr)
                             if exception_details:
                                 exception_details += f"\n{err_msg}"
@@ -197,20 +233,54 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
             print(summary_log)
         else:
             print(f"[Mock Push Notification] To User UUID: {recipient_user_id} | Title: {title} | Message: {message}")
+            success_count = token_count
+            failure_count = 0
+            token_results = [
+                {
+                    "token": t[:15] + "..." if len(t) > 15 else t,
+                    "status": "success",
+                    "message_id": "mock-message-id"
+                } for t in tokens
+            ]
 
+        dispatch_summary = {
+            "token_count": token_count,
+            "success_count": success_count,
+            "failure_count": failure_count,
+            "tokens": token_results,
+            "exception_details": exception_details
+        }
+        if return_summary:
+            return notif, dispatch_summary
         return notif
     except Exception as e:
         db.session.rollback()
         print(f"Error in create_and_send_notification: {str(e)}", file=sys.stderr)
+        if return_summary:
+            return None, {"error": str(e), "token_count": 0, "success_count": 0, "failure_count": 0, "tokens": []}
         return None
 
 def notify_all_bosses(title, message, entity_type=None, entity_id=None):
     """
     Utility helper to notify all Bosses in the system.
+    Returns detailed dispatch summaries for each Boss.
     """
+    results = []
     try:
         bosses = User.query.filter_by(role='BOSS', active=True).all()
         for boss in bosses:
-            create_and_send_notification(boss.id, title, message, entity_type, entity_id)
+            notif, summary = create_and_send_notification(
+                boss.id, title, message, entity_type, entity_id, return_summary=True
+            )
+            results.append({
+                "username": boss.username,
+                "user_id": str(boss.id),
+                "notification_id": str(notif.id) if notif else None,
+                "dispatch_summary": summary
+            })
     except Exception as e:
         print(f"Error notifying bosses: {str(e)}", file=sys.stderr)
+    return results
+
+
+

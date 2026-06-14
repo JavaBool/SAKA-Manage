@@ -1,3 +1,5 @@
+import 'package:client_flutter/features/reports/models/report_model.dart';
+
 class DailyTargetModel {
   final String id;
   final int targetContacts;
@@ -30,6 +32,7 @@ class DailyTargetModel {
   }
 }
 
+
 class DailySummaryModel {
   final int targetContacts;
   final int actualContactsHandled;
@@ -37,6 +40,7 @@ class DailySummaryModel {
   final int reportsCountToday;
   final bool metTarget;
   final String date;
+  final List<ReportModel> todayReports;
 
   DailySummaryModel({
     required this.targetContacts,
@@ -45,9 +49,15 @@ class DailySummaryModel {
     required this.reportsCountToday,
     required this.metTarget,
     required this.date,
+    required this.todayReports,
   });
 
   factory DailySummaryModel.fromJson(Map<String, dynamic> json) {
+    var reportsJson = json['today_reports'] as List?;
+    List<ReportModel> reports = reportsJson != null
+        ? reportsJson.map((r) => ReportModel.fromJson(r as Map<String, dynamic>)).toList()
+        : [];
+        
     return DailySummaryModel(
       targetContacts: json['target_contacts'] as int,
       actualContactsHandled: json['actual_contacts_handled'] as int,
@@ -55,6 +65,8 @@ class DailySummaryModel {
       reportsCountToday: json['reports_count_today'] as int,
       metTarget: json['met_target'] as bool,
       date: json['date'] as String,
+      todayReports: reports,
     );
   }
 }
+

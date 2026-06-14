@@ -115,3 +115,137 @@ def settings():
         server_time=server_time,
         admin_email=ADMIN_EMAIL
     )
+
+from backend.models.models import APIKey
+import secrets
+from datetime import datetime, timezone
+
+@admin_db_bp.route('/api-keys')
+@admin_required()
+def api_keys():
+    keys_list = APIKey.query.order_by(APIKey.created_at.desc()).all()
+    # Provide a pre-generated secure token suggestion for convenience
+    suggested_key = f"saka_key_{secrets.token_urlsafe(24)}"
+    return render_template('api_keys.html', api_keys=keys_list, suggested_key=suggested_key)
+
+@admin_db_bp.route('/api-keys/create', methods=['POST'])
+@admin_required()
+def create_api_key():
+    name = request.form.get('name', '').strip()
+    key_val = request.form.get('key', '').strip()
+    enable_expiry = request.form.get('enable_expiry') == 'y'
+    expires_at_str = request.form.get('expires_at', '').strip()
+    allowed_endpoints = request.form.getlist('allowed_endpoints')
+
+    if not name:
+        flash("API Key Name is required.", "error")
+        return redirect(url_for('admin_db.api_keys'))
+
+    if not key_val:
+        key_val = f"saka_key_{secrets.token_urlsafe(24)}"
+
+    # Parse expiration date if enabled
+    expires_at = None
+    if enable_expiry and expires_at_str:
+        try:
+            # HTML datetime-local format: YYYY-MM-DDTHH:MM
+            expires_at = datetime.fromisoformat(expires_at_str).replace(tzinfo=timezone.utc)
+        except ValueError:
+            flash("Invalid expiry date/time format.", "error")
+            return redirect(url_for('admin_db.api_keys'))
+
+    if not allowed_endpoints:
+        flash("You must select at least one allowed endpoint.", "error")
+        return redirect(url_for('admin_db.api_keys'))
+
+    # Check for duplicate key value
+    existing = APIKey.query.filter_by(key=key_val).first()
+    if existing:
+        flash("This API Key value already exists. Suggest regenerating a new key.", "error")
+        return redirect(url_for('admin_db.api_keys'))
+
+    new_key = APIKey(
+        name=name,
+        key=key_val,
+        is_active=True,
+        enable_expiry=enable_expiry,
+        expires_at=expires_at,
+        allowed_endpoints=allowed_endpoints
+    )
+    
+    try:
+        db.session.add(new_key)
+        db.session.commit()
+        
+        # Log in audit log
+        from backend.services.audit_service import log_action
+        log_action(
+            action="Create API Key",
+            user_id=None,  # Admin action via dashboard
+            entity_type="api_key",
+            entity_id=new_key.id,
+            new_value={"name": name, "allowed_endpoints": allowed_endpoints}
+        )
+        flash("API Key created successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error creating API Key: {str(e)}", "error")
+
+    return redirect(url_for('admin_db.api_keys'))
+
+@admin_db_bp.route('/api-keys/<uuid:key_id>/toggle', methods=['POST'])
+@admin_required()
+def toggle_api_key(key_id):
+    # Use Session.get() or query filter to get key
+    key_obj = APIKey.query.get(key_id)
+    if not key_obj:
+        flash("API Key not found.", "error")
+        return redirect(url_for('admin_db.api_keys'))
+    key_obj.is_active = not key_obj.is_active
+    try:
+        db.session.commit()
+        status_str = "activated" if key_obj.is_active else "deactivated"
+        
+        # Log audit
+        from backend.services.audit_service import log_action
+        log_action(
+            action="Toggle API Key Status",
+            user_id=None,
+            entity_type="api_key",
+            entity_id=key_obj.id,
+            new_value={"is_active": key_obj.is_active}
+        )
+        flash(f"API Key successfully {status_str}!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error toggling status: {str(e)}", "error")
+        
+    return redirect(url_for('admin_db.api_keys'))
+
+@admin_db_bp.route('/api-keys/<uuid:key_id>/delete', methods=['POST'])
+@admin_required()
+def delete_api_key(key_id):
+    key_obj = APIKey.query.get(key_id)
+    if not key_obj:
+        flash("API Key not found.", "error")
+        return redirect(url_for('admin_db.api_keys'))
+    try:
+        db.session.delete(key_obj)
+        db.session.commit()
+        
+        # Log audit
+        from backend.services.audit_service import log_action
+        log_action(
+            action="Delete API Key",
+            user_id=None,
+            entity_type="api_key",
+            entity_id=key_id,
+            new_value={"name": key_obj.name}
+        )
+        flash("API Key deleted successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error deleting API Key: {str(e)}", "error")
+
+    return redirect(url_for('admin_db.api_keys'))
+

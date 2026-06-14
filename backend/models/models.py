@@ -273,3 +273,29 @@ class DailyTarget(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+class APIKey(db.Model):
+    __tablename__ = 'api_keys'
+    id = db.Column(db.Uuid, primary_key=True, default=uuid.uuid4)
+    name = db.Column(db.String(100), nullable=False)
+    key = db.Column(db.String(256), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    enable_expiry = db.Column(db.Boolean, default=False, nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    allowed_endpoints = db.Column(db.JSON, nullable=False)  # list of allowed paths
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': str(self.id),
+            'name': self.name,
+            'key': self.key,
+            'is_active': self.is_active,
+            'enable_expiry': self.enable_expiry,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'allowed_endpoints': self.allowed_endpoints,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
