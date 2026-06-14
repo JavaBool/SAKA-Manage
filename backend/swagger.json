@@ -1,0 +1,270 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SAKA-Manage API Documentation",
+    "description": "REST APIs documentation for SAKA-Manage customer feedback system.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Relative API endpoint"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Authenticate Manager or Boss",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Successfully logged in, returns JWT token" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/admin_auth/login": {
+      "post": {
+        "tags": ["Admin Authentication"],
+        "summary": "Step 1 of Admin Login - Verify credentials and send OTP",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Credentials verified, OTP code sent by email" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/admin_auth/verify-otp": {
+      "post": {
+        "tags": ["Admin Authentication"],
+        "summary": "Step 2 of Admin Login - Verify 6 digit OTP",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "otp": { "type": "string" }
+                },
+                "required": ["email", "otp"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP verified, session created and returns JWT token" },
+          "401": { "description": "Invalid or expired OTP" }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List all personnel logins (Boss/Manager)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of user dicts" }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create a new personnel login account (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "email": { "type": "string" },
+                  "password": { "type": "string" },
+                  "role": { "type": "string", "enum": ["BOSS", "MANAGER"] },
+                  "phone": { "type": "string" }
+                },
+                "required": ["username", "email", "password", "role"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created" }
+        }
+      }
+    },
+    "/contacts": {
+      "get": {
+        "tags": ["Contacts"],
+        "summary": "Get contacts directory (Managers only see assigned, Bosses/Admins see all)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of contacts" }
+        }
+      },
+      "post": {
+        "tags": ["Contacts"],
+        "summary": "Create a customer contact (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Contact created" }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "List products in portfolio",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of products" }
+        }
+      },
+      "post": {
+        "tags": ["Products"],
+        "summary": "Create a new product catalog item (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Product created" }
+        }
+      }
+    },
+    "/reports": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "List feedback reports (Managers see own, Bosses/Admins see all)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "List of reports" }
+        }
+      },
+      "post": {
+        "tags": ["Reports"],
+        "summary": "Create a new customer feedback report (Manager only) (Supports multipart/form-data files)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Report created" }
+        }
+      }
+    },
+    "/reports/export": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Export all reports in CSV format (Boss/Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "CSV attachment payload" }
+        }
+      }
+    },
+    "/followups": {
+      "post": {
+        "tags": ["Followups"],
+        "summary": "Log a followup notes progress entry (Manager only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "report_id": { "type": "string", "format": "uuid" },
+                  "notes": { "type": "string" }
+                },
+                "required": ["report_id", "notes"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Followup added" }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List current user notifications",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Notifications list" }
+        }
+      }
+    },
+    "/analytics": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Retrieve KPI metrics and Chart distributions (Boss/Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Analytics calculations JSON" }
+        }
+      }
+    },
+    "/device_tokens": {
+      "post": {
+        "tags": ["Push Tokens"],
+        "summary": "Register mobile/desktop FCM device token",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "platform": { "type": "string", "enum": ["android", "windows"] },
+                  "fcm_token": { "type": "string" }
+                },
+                "required": ["platform", "fcm_token"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "FCM Token registered" }
+        }
+      }
+    }
+  }
+}

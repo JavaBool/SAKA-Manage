@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAKA Manage - Admin Login</title>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: hsl(220, 25%, 10%);
+            --bg-secondary: hsl(220, 25%, 15%);
+            --accent-primary: hsl(260, 85%, 65%);
+            --accent-secondary: hsl(280, 80%, 60%);
+            --text-main: hsl(220, 30%, 90%);
+            --text-muted: hsl(220, 15%, 65%);
+            --border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(circle at 10% 20%, rgba(138, 75, 243, 0.15) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(186, 75, 243, 0.1) 0%, transparent 45%);
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(10px);
+        }
+
+        .login-logo {
+            font-size: 2.25rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-logo i {
+            margin-right: 0.5rem;
+        }
+
+        .form-control-custom {
+            background-color: hsl(220, 25%, 12%);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+        }
+
+        .form-control-custom:focus {
+            background-color: hsl(220, 25%, 12%);
+            border-color: var(--accent-primary);
+            color: var(--text-main);
+            box-shadow: 0 0 0 0.25rem rgba(138, 75, 243, 0.25);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+            border-radius: 8px;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .btn-accent:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--border-color);
+        }
+
+        .step-dot.active {
+            background-color: var(--accent-primary);
+            box-shadow: 0 0 8px var(--accent-primary);
+        }
+
+        .error-message {
+            color: hsl(0, 85%, 65%);
+            background-color: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .otp-input-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .otp-digit {
+            width: 48px;
+            height: 48px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            background-color: hsl(220, 25%, 12%);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 8px;
+        }
+
+        .otp-digit:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 0.25rem rgba(138, 75, 243, 0.25);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="login-logo">
+            <i class="fa-solid fa-cube"></i>SAKA Manage
+        </div>
+        <p class="text-center text-muted mb-4" id="login-subtitle">Administrator Portal Access</p>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" id="dot-1"></div>
+            <div class="step-dot" id="dot-2"></div>
+        </div>
+
+        <div class="error-message" id="error-box">Error message placeholder</div>
+
+        <!-- Step 1: Email and Password -->
+        <form id="credentials-form">
+            <div class="mb-3">
+                <label for="email" class="form-label text-muted small">Email Address</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0 border-color" style="border-color: var(--border-color); color: var(--text-muted);"><i class="fa-solid fa-envelope"></i></span>
+                    <input type="email" class="form-control form-control-custom border-start-0" id="email" required placeholder="admin@saka-manage.com" value="admin@saka-manage.com">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="password" class="form-label text-muted small">Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border-color); color: var(--text-muted);"><i class="fa-solid fa-lock"></i></span>
+                    <input type="password" class="form-control form-control-custom border-start-0" id="password" required placeholder="••••••••">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-accent" id="btn-login-next">
+                Verify Credentials <i class="fa-solid fa-arrow-right ms-1"></i>
+            </button>
+        </form>
+
+        <!-- Step 2: OTP Verification (hidden initially) -->
+        <form id="otp-form" style="display: none;">
+            <p class="text-center text-muted small mb-2">We sent a 6-digit OTP code to your email.</p>
+            <div class="otp-input-container">
+                <input type="text" maxlength="1" class="otp-digit" id="otp-1" required autocomplete="off">
+                <input type="text" maxlength="1" class="otp-digit" id="otp-2" required autocomplete="off">
+                <input type="text" maxlength="1" class="otp-digit" id="otp-3" required autocomplete="off">
+                <input type="text" maxlength="1" class="otp-digit" id="otp-4" required autocomplete="off">
+                <input type="text" maxlength="1" class="otp-digit" id="otp-5" required autocomplete="off">
+                <input type="text" maxlength="1" class="otp-digit" id="otp-6" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-accent mb-3">
+                Verify OTP & Sign In <i class="fa-solid fa-right-to-bracket ms-1"></i>
+            </button>
+            <button type="button" class="btn btn-link text-muted w-100 text-decoration-none small" id="btn-back-login">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to Login
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const credForm = document.getElementById('credentials-form');
+        const otpForm = document.getElementById('otp-form');
+        const errorBox = document.getElementById('error-box');
+        const dot1 = document.getElementById('dot-1');
+        const dot2 = document.getElementById('dot-2');
+        const loginSubtitle = document.getElementById('login-subtitle');
+
+        let emailVal = '';
+
+        // Handle credentials verification
+        credForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+            emailVal = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/v1/admin_auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailVal, password: password })
+                });
+
+                const data = await response.get_json ? await response.get_json() : await response.json();
+                if (response.ok) {
+                    // Switch to OTP state
+                    credForm.style.display = 'none';
+                    otpForm.style.display = 'block';
+                    dot1.classList.remove('active');
+                    dot2.classList.add('active');
+                    loginSubtitle.innerText = 'Email Verification Required';
+                    // Focus on first OTP box
+                    document.getElementById('otp-1').focus();
+                } else {
+                    showError(data.error || 'Login failed');
+                }
+            } catch (err) {
+                showError('Network error occurred. Please try again.');
+            }
+        });
+
+        // OTP inputs auto-advance
+        const otpDigits = document.querySelectorAll('.otp-digit');
+        otpDigits.forEach((digit, index) => {
+            digit.addEventListener('keyup', (e) => {
+                if (e.target.value.length === 1 && index < otpDigits.length - 1) {
+                    otpDigits[index + 1].focus();
+                }
+                if (e.key === 'Backspace' && index > 0) {
+                    otpDigits[index - 1].focus();
+                }
+            });
+        });
+
+        // Handle OTP verification
+        otpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+            
+            const otpCode = Array.from(otpDigits).map(input => input.value).join('');
+            if (otpCode.length !== 6) {
+                showError('Please enter all 6 digits.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/admin_auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailVal, otp: otpCode })
+                });
+
+                const data = await response.json();
+                if (response.ok) {
+                    // Redirect to Admin dashboard
+                    window.location.href = '/admin/dashboard';
+                } else {
+                    showError(data.error || 'OTP verification failed');
+                }
+            } catch (err) {
+                showError('Verification failed. Network error.');
+            }
+        });
+
+        // Back button
+        document.getElementById('btn-back-login').addEventListener('click', () => {
+            otpForm.style.display = 'none';
+            credForm.style.display = 'block';
+            dot2.classList.remove('active');
+            dot1.classList.add('active');
+            loginSubtitle.innerText = 'Administrator Portal Access';
+            errorBox.style.display = 'none';
+        });
+
+        function showError(msg) {
+            errorBox.innerText = msg;
+            errorBox.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

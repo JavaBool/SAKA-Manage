@@ -1,0 +1,166 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <h4 class="m-0 font-weight-700">Security Audit Trail</h4>
+    <p class="text-muted small m-0">Immutable records of login, creation, modification, and deletion events.</p>
+</div>
+
+<!-- Simple Search Filter -->
+<div class="glass-card mb-4">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <input type="text" id="auditSearch" class="form-control form-control-custom" placeholder="Filter by action, entity type, or IP address...">
+        </div>
+        <div class="col-md-4">
+            <select id="filterAction" class="form-select form-control-custom">
+                <option value="">-- All Actions --</option>
+                <option value="login">Login</option>
+                <option value="logout">Logout</option>
+                <option value="creation">Creation</option>
+                <option value="update">Update</option>
+                <option value="delete">Delete</option>
+                <option value="disable">Disable</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="button" class="btn btn-dark-custom" id="btnResetAudit">Reset</button>
+        </div>
+    </div>
+</div>
+
+<div class="glass-card">
+    <div class="table-responsive">
+        <table class="table table-dark-custom" id="auditTable">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>Entity Type</th>
+                    <th>Entity ID</th>
+                    <th>IP Address</th>
+                    <th>Performed At</th>
+                    <th class="text-end">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if logs %}
+                    {% for log in logs %}
+                        <tr class="audit-row" 
+                            data-action="{{ log.action|lower }}" 
+                            data-entity="{{ log.entity_type|lower if log.entity_type else '' }}"
+                            data-ip="{{ log.ip_address or '' }}">
+                            <td>
+                                <span class="font-weight-600 d-flex align-items-center gap-2">
+                                    <i class="fa-solid fa-fingerprint text-muted"></i>
+                                    {{ log.action }}
+                                </span>
+                            </td>
+                            <td>{{ log.entity_type or '-' }}</td>
+                            <td class="small text-muted">{{ log.entity_id or '-' }}</td>
+                            <td>{{ log.ip_address or 'System' }}</td>
+                            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '-' }}</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-dark-custom btn-sm btn-view-diff" 
+                                    data-old='{{ log.old_value_json or "{}" }}' 
+                                    data-new='{{ log.new_value_json or "{}" }}'>
+                                    <i class="fa-solid fa-circle-info"></i> Diff
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">No audit logs recorded.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Diff Viewer Modal -->
+<div class="modal fade" id="diffModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-custom">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title font-weight-700">Audit State Difference</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Prior State (Old Value)</label>
+                    <pre class="p-3 rounded bg-primary border" id="diff-old" style="border-color: var(--border-color); overflow: auto; max-height: 200px; color: var(--text-muted);"></pre>
+                </div>
+                <div>
+                    <label class="form-label text-muted small">New State (New Value)</label>
+                    <pre class="p-3 rounded bg-primary border" id="diff-new" style="border-color: var(--border-color); overflow: auto; max-height: 200px; color: var(--accent-success);"></pre>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-dark-custom" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const diffModal = new bootstrap.Modal(document.getElementById('diffModal'));
+        
+        // Search filter logic
+        const searchInput = document.getElementById('auditSearch');
+        const actionSelect = document.getElementById('filterAction');
+        const rows = document.querySelectorAll('.audit-row');
+
+        function filterAudit() {
+            const query = searchInput.value.toLowerCase();
+            const actionVal = actionSelect.value.toLowerCase();
+
+            rows.forEach(row => {
+                const action = row.dataset.action;
+                const entity = row.dataset.entity;
+                const ip = row.dataset.ip;
+
+                const matchesSearch = action.includes(query) || entity.includes(query) || ip.includes(query);
+                const matchesAction = !actionVal || action.includes(actionVal);
+
+                if (matchesSearch && matchesAction) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        searchInput.addEventListener('input', filterAudit);
+        actionSelect.addEventListener('change', filterAudit);
+
+        document.getElementById('btnResetAudit').addEventListener('click', () => {
+            searchInput.value = '';
+            actionSelect.value = '';
+            filterAudit();
+        });
+
+        // Setup diff modal trigger
+        document.querySelectorAll('.btn-view-diff').forEach(btn => {
+            btn.addEventListener('click', () => {
+                try {
+                    const oldJson = JSON.parse(btn.dataset.old);
+                    const newJson = JSON.parse(btn.dataset.new);
+                    
+                    document.getElementById('diff-old').innerText = JSON.stringify(oldJson, null, 2);
+                    document.getElementById('diff-new').innerText = JSON.stringify(newJson, null, 2);
+                    
+                    diffModal.show();
+                } catch(e) {
+                    document.getElementById('diff-old').innerText = btn.dataset.old;
+                    document.getElementById('diff-new').innerText = btn.dataset.new;
+                    diffModal.show();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

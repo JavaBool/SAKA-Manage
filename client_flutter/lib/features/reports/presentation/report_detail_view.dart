@@ -1,0 +1,372 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+// import 'package:url_launcher/url_launcher.dart';
+// import 'package:client_flutter/core/api_client.dart';
+import 'package:client_flutter/core/providers.dart';
+import 'package:client_flutter/core/theme.dart';
+import 'package:client_flutter/features/reports/models/report_model.dart';
+import 'package:client_flutter/features/reports/models/followup_model.dart';
+
+class ReportDetailView extends ConsumerStatefulWidget {
+  final String reportId;
+  const ReportDetailView({super.key, required this.reportId});
+
+  @override
+  ConsumerState<ReportDetailView> createState() => _ReportDetailViewState();
+}
+
+class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
+  final _followupController = TextEditingController();
+  late Future<ReportModel> _reportFuture;
+  late Future<List<FollowupModel>> _followupsFuture;
+  bool _isActionLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshData();
+  }
+
+  void _refreshData() {
+    setState(() {
+      _reportFuture = ref.read(reportsRepositoryProvider).getReports().then(
+            (list) => list.firstWhere((r) => r.id == widget.reportId),
+          );
+      _followupsFuture = ref.read(reportsRepositoryProvider).getFollowups(widget.reportId);
+    });
+  }
+
+  Future<void> _submitFollowup() async {
+    final notes = _followupController.text.trim();
+    if (notes.isEmpty) return;
+
+    setState(() {
+      _isActionLoading = true;
+    });
+
+    try {
+      await ref.read(reportsRepositoryProvider).createFollowup(widget.reportId, notes);
+      _followupController.clear();
+      _refreshData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Follow-up logged successfully!"), backgroundColor: AppTheme.success),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to log follow-up: $e"), backgroundColor: AppTheme.danger),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isActionLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateStatus(ReportModel report, String newStatus) async {
+    setState(() {
+      _isActionLoading = true;
+    });
+
+    final updatedReport = ReportModel(
+      id: report.id,
+      contactId: report.contactId,
+      managerId: report.managerId,
+      productId: report.productId,
+      feedbackType: report.feedbackType,
+      summary: report.summary,
+      details: report.details,
+      priority: report.priority,
+      status: newStatus,
+      nextFollowupDate: report.nextFollowupDate,
+      createdAt: report.createdAt,
+      updatedAt: DateTime.now().toUtc(),
+      contactName: report.contactName,
+      contactCompany: report.contactCompany,
+      productName: report.productName,
+      managerUsername: report.managerUsername,
+    );
+
+    try {
+      await ref.read(reportsRepositoryProvider).updateReport(updatedReport);
+      _refreshData();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update status: $e"), backgroundColor: AppTheme.danger),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isActionLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _followupController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authStateProvider);
+    final user = authState.value;
+    final bool isManager = user?.role == 'MANAGER';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Report Detail Summary"),
+      ),
+      body: FutureBuilder<ReportModel>(
+        future: _reportFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+          }
+          if (snapshot.hasError) {
+            return Center(
+              child: Text("Error: ${snapshot.error}", style: const TextStyle(color: AppTheme.danger)),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: Text("Report not found."));
+          }
+
+          final report = snapshot.data!;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header details
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          report.summary,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.person_outline, size: 16, color: AppTheme.textMuted),
+                            const SizedBox(width: 6),
+                            Text(
+                              "${report.contactName ?? 'Client'} (${report.contactCompany ?? ''})",
+                              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.shopping_bag_outlined, size: 16, color: AppTheme.textMuted),
+                            const SizedBox(width: 6),
+                            Text(
+                              report.productName ?? 'Product Line',
+                              style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Metadata parameters
+                Row(
+                  children: [
+                    Expanded(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("PRIORITY", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                              const SizedBox(height: 4),
+                              Text(
+                                report.priority.toUpperCase(),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("FEEDBACK TYPE", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                              const SizedBox(height: 4),
+                              Text(
+                                report.feedbackType.replaceAll('_', ' ').toUpperCase(),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Status modifier row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Current Ticket Status:",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textMain),
+                    ),
+                    if (isManager && report.status != 'closed')
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: _isActionLoading ? null : () => _updateStatus(report, 'followup_pending'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.warning.withOpacity(0.2),
+                              foregroundColor: AppTheme.warning,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            child: const Text("PENDING", style: TextStyle(fontSize: 12)),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: _isActionLoading ? null : () => _updateStatus(report, 'closed'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.success.withOpacity(0.2),
+                              foregroundColor: AppTheme.success,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            child: const Text("CLOSE TICKET", style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          report.status.toUpperCase(),
+                          style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Detailed Notes
+                const Text("Detailed Notes", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.darkInput,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.borderColor),
+                  ),
+                  child: Text(
+                    report.details,
+                    style: const TextStyle(color: AppTheme.textMain, height: 1.5),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // Followup Timeline logs
+                const Text("Followup Progress logs", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 8),
+                FutureBuilder<List<FollowupModel>>(
+                  future: _followupsFuture,
+                  builder: (context, fSnapshot) {
+                    if (fSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+                    }
+                    final followups = fSnapshot.data ?? [];
+                    if (followups.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text("No progress followups logged yet.", style: TextStyle(color: AppTheme.textMuted)),
+                      );
+                    }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: followups.length,
+                      itemBuilder: (context, idx) {
+                        final f = followups[idx];
+                        final dateStr = DateFormat('yyyy-MM-dd HH:mm').format(f.createdAt.toLocal());
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      f.managerUsername ?? 'Manager',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 12),
+                                    ),
+                                    Text(dateStr, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(f.notes, style: const TextStyle(color: AppTheme.textMain, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                // Log Followup notes form (for Manager only)
+                if (isManager && report.status != 'closed') ...[
+                  TextField(
+                    controller: _followupController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: "Log Follow-up notes",
+                      hintText: "Enter customer call notes, meeting actions, etc...",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _isActionLoading ? null : _submitFollowup,
+                    child: _isActionLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("SAVE PROGRESS NOTE"),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}

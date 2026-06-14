@@ -1,0 +1,297 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="m-0 font-weight-700">Personnel Accounts</h4>
+        <p class="text-muted small m-0">Create, update, or disable Manager and Boss logins.</p>
+    </div>
+    <button type="button" class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#createUserModal">
+        <i class="fa-solid fa-user-plus me-1"></i> Add Account
+    </button>
+</div>
+
+<div class="glass-card">
+    <div class="table-responsive">
+        <table class="table table-dark-custom">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email Address</th>
+                    <th>Phone</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last Logged In</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if users %}
+                    {% for user in users %}
+                        <tr id="user-row-{{ user.id }}">
+                            <td>
+                                <div class="font-weight-600 d-flex align-items-center gap-2">
+                                    <i class="fa-solid {% if user.role == 'BOSS' %}fa-user-tie text-info{% else %}fa-user-gear text-warning{% endif %}"></i>
+                                    {{ user.username }}
+                                </div>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.phone or '-' }}</td>
+                            <td>
+                                <span class="badge bg-secondary">{{ user.role }}</span>
+                            </td>
+                            <td>
+                                {% if user.active %}
+                                    <span class="badge-custom text-success" style="background-color: rgba(40,167,69,0.1);"><i class="fa-solid fa-circle-check me-1"></i>Active</span>
+                                {% else %}
+                                    <span class="badge-custom text-danger" style="background-color: rgba(220,53,69,0.1);"><i class="fa-solid fa-circle-xmark me-1"></i>Disabled</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never' }}
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-dark-custom btn-sm btn-edit-user" 
+                                    data-id="{{ user.id }}" 
+                                    data-username="{{ user.username }}" 
+                                    data-email="{{ user.email }}" 
+                                    data-phone="{{ user.phone or '' }}" 
+                                    data-role="{{ user.role }}" 
+                                    data-active="{{ 'true' if user.active else 'false' }}">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                {% if user.active %}
+                                    <button type="button" class="btn btn-dark-custom btn-sm text-danger ms-1 btn-disable-user" data-id="{{ user.id }}" data-username="{{ user.username }}">
+                                        <i class="fa-solid fa-ban"></i>
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">No personnel accounts configured.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-custom">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title font-weight-700">Add Account</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="create-user-form">
+                <div class="modal-body">
+                    <div class="error-message alert alert-danger" id="create-error-box" style="display:none;"></div>
+                    <div class="mb-3">
+                        <label for="c-username" class="form-label text-muted small">Username</label>
+                        <input type="text" class="form-control form-control-custom" id="c-username" required placeholder="e.g. jsmith">
+                    </div>
+                    <div class="mb-3">
+                        <label for="c-email" class="form-label text-muted small">Email Address</label>
+                        <input type="email" class="form-control form-control-custom" id="c-email" required placeholder="e.g. john@company.com">
+                    </div>
+                    <div class="mb-3">
+                        <label for="c-phone" class="form-label text-muted small">Phone Number</label>
+                        <input type="text" class="form-control form-control-custom" id="c-phone" placeholder="e.g. +123456789">
+                    </div>
+                    <div class="mb-3">
+                        <label for="c-role" class="form-label text-muted small">Role Permission</label>
+                        <select class="form-select form-control-custom" id="c-role" required>
+                            <option value="MANAGER">MANAGER</option>
+                            <option value="BOSS">BOSS</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="c-password" class="form-label text-muted small">Password</label>
+                        <input type="password" class="form-control form-control-custom" id="c-password" required placeholder="Enter password">
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-custom">
+                    <button type="button" class="btn btn-dark-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-accent">Create Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-custom">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title font-weight-700">Update Account</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="edit-user-form">
+                <input type="hidden" id="e-id">
+                <div class="modal-body">
+                    <div class="error-message alert alert-danger" id="edit-error-box" style="display:none;"></div>
+                    <div class="mb-3">
+                        <label for="e-username" class="form-label text-muted small">Username</label>
+                        <input type="text" class="form-control form-control-custom" id="e-username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="e-email" class="form-label text-muted small">Email Address</label>
+                        <input type="email" class="form-control form-control-custom" id="e-email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="e-phone" class="form-label text-muted small">Phone Number</label>
+                        <input type="text" class="form-control form-control-custom" id="e-phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="e-role" class="form-label text-muted small">Role Permission</label>
+                        <select class="form-select form-control-custom" id="e-role" required>
+                            <option value="MANAGER">MANAGER</option>
+                            <option value="BOSS">BOSS</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="e-active" class="form-label text-muted small">Account Access</label>
+                        <select class="form-select form-control-custom" id="e-active" required>
+                            <option value="true">Active / Enabled</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="e-password" class="form-label text-muted small">Password (leave blank to keep unchanged)</label>
+                        <input type="password" class="form-control form-control-custom" id="e-password" placeholder="Enter new password">
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-custom">
+                    <button type="button" class="btn btn-dark-custom" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-accent">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const createForm = document.getElementById('create-user-form');
+        const editForm = document.getElementById('edit-user-form');
+        const editModalEl = document.getElementById('editUserModal');
+        const editModal = new bootstrap.Modal(editModalEl);
+        
+        // Handle User Creation
+        createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorBox = document.getElementById('create-error-box');
+            errorBox.style.display = 'none';
+            
+            const payload = {
+                username: document.getElementById('c-username').value,
+                email: document.getElementById('c-email').value,
+                phone: document.getElementById('c-phone').value,
+                role: document.getElementById('c-role').value,
+                password: document.getElementById('c-password').value
+            };
+
+            try {
+                const response = await fetch('/api/v1/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    errorBox.innerText = data.error || 'Failed to create user';
+                    errorBox.style.display = 'block';
+                }
+            } catch (err) {
+                errorBox.innerText = 'Network error occurred.';
+                errorBox.style.display = 'block';
+            }
+        });
+
+        // Setup Edit Modal Trigger
+        document.querySelectorAll('.btn-edit-user').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('e-id').value = btn.dataset.id;
+                document.getElementById('e-username').value = btn.dataset.username;
+                document.getElementById('e-email').value = btn.dataset.email;
+                document.getElementById('e-phone').value = btn.dataset.phone;
+                document.getElementById('e-role').value = btn.dataset.role;
+                document.getElementById('e-active').value = btn.dataset.active;
+                document.getElementById('e-password').value = '';
+                
+                document.getElementById('edit-error-box').style.display = 'none';
+                editModal.show();
+            });
+        });
+
+        // Handle User Edit
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorBox = document.getElementById('edit-error-box');
+            errorBox.style.display = 'none';
+            
+            const id = document.getElementById('e-id').value;
+            const payload = {
+                username: document.getElementById('e-username').value,
+                email: document.getElementById('e-email').value,
+                phone: document.getElementById('e-phone').value,
+                role: document.getElementById('e-role').value,
+                active: document.getElementById('e-active').value === 'true'
+            };
+            
+            const password = document.getElementById('e-password').value;
+            if (password) {
+                payload.password = password;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/users/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    errorBox.innerText = data.error || 'Failed to update user';
+                    errorBox.style.display = 'block';
+                }
+            } catch (err) {
+                errorBox.innerText = 'Network error occurred.';
+                errorBox.style.display = 'block';
+            }
+        });
+
+        // Handle Quick Disable Action
+        document.querySelectorAll('.btn-disable-user').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (confirm(`Are you sure you want to disable login access for "${btn.dataset.username}"?`)) {
+                    try {
+                        const response = await fetch(`/api/v1/users/${btn.dataset.id}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            alert('Failed to disable user');
+                        }
+                    } catch (err) {
+                        alert('Network error occurred.');
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

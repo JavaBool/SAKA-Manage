@@ -1,0 +1,280 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="m-0 font-weight-700">Customer Feedback Reports</h4>
+        <p class="text-muted small m-0">Browse submitted customer reviews, complaints, and followups.</p>
+    </div>
+    <a href="/api/v1/reports/export" class="btn btn-accent">
+        <i class="fa-solid fa-file-csv me-1"></i> Export Reports (CSV)
+    </a>
+</div>
+
+<!-- Search & Filter Controls -->
+<div class="glass-card mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <input type="text" id="reportSearch" class="form-control form-control-custom" placeholder="Search summary or details...">
+        </div>
+        <div class="col-md-3">
+            <select id="filterPriority" class="form-select form-control-custom">
+                <option value="">-- All Priorities --</option>
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="CRITICAL">CRITICAL</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select id="filterType" class="form-select form-control-custom">
+                <option value="">-- All Feedback Types --</option>
+                <option value="positive">Positive</option>
+                <option value="negative">Negative</option>
+                <option value="complaint">Complaint</option>
+                <option value="suggestion">Suggestion</option>
+                <option value="feature_request">Feature Request</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="button" class="btn btn-dark-custom" id="btnResetFilters">Reset</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reports Table -->
+<div class="glass-card">
+    <div class="table-responsive">
+        <table class="table table-dark-custom" id="reportsTable">
+            <thead>
+                <tr>
+                    <th>Summary</th>
+                    <th>Product</th>
+                    <th>Contact</th>
+                    <th>Manager</th>
+                    <th>Feedback Type</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if reports %}
+                    {% for report in reports %}
+                        <tr class="report-row" 
+                            data-summary="{{ report.summary|lower }}" 
+                            data-details="{{ report.details|lower }}"
+                            data-priority="{{ report.priority|upper }}" 
+                            data-type="{{ report.feedback_type }}">
+                            <td>
+                                <div class="font-weight-600">{{ report.summary }}</div>
+                            </td>
+                            <td>{{ report.product.name if report.product else '-' }}</td>
+                            <td>
+                                <div>{{ report.contact.name if report.contact else '-' }}</div>
+                                <div class="text-muted small">{{ report.contact.company if report.contact and report.contact.company else '' }}</div>
+                            </td>
+                            <td>{{ report.manager.username if report.manager else '-' }}</td>
+                            <td>
+                                <span class="badge bg-dark border border-secondary text-capitalize">{{ report.feedback_type.replace('_', ' ') }}</span>
+                            </td>
+                            <td>
+                                <span class="badge-custom badge-{{ report.priority }}">{{ report.priority|upper }}</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-custom bg-secondary">{{ report.status|upper }}</span>
+                            </td>
+                            <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '-' }}</td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-dark-custom btn-sm btn-view-report" data-id="{{ report.id }}">
+                                    <i class="fa-solid fa-eye me-1"></i> Details
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">No feedback reports have been filed.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Report Detail Modal -->
+<div class="modal fade" id="reportDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-custom">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title font-weight-700" id="m-report-title">Report Title</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="text-muted small">Feedback Type</div>
+                        <div class="font-weight-600 text-capitalize" id="m-report-type">-</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Priority</div>
+                        <div id="m-report-priority">-</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Status</div>
+                        <div class="font-weight-600" id="m-report-status">-</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Follow-up Date</div>
+                        <div class="font-weight-600" id="m-report-followup">-</div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted small border-bottom pb-2" style="border-color: var(--border-color) !important;">Detailed Notes</h6>
+                    <p class="mb-0" id="m-report-details" style="white-space: pre-wrap; line-height: 1.6;"></p>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted small border-bottom pb-2" style="border-color: var(--border-color) !important;">Attachments</h6>
+                    <div class="row g-2" id="m-report-attachments">
+                        <!-- attachments rendered here -->
+                    </div>
+                </div>
+
+                <div>
+                    <h6 class="text-muted small border-bottom pb-2" style="border-color: var(--border-color) !important;">Follow-up Logs</h6>
+                    <div class="list-group list-group-flush" id="m-report-followups" style="background-color: transparent;">
+                        <!-- followups rendered here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-dark-custom" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const detailModal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
+
+        // Client-side Searching/Filtering
+        const searchInput = document.getElementById('reportSearch');
+        const prioritySelect = document.getElementById('filterPriority');
+        const typeSelect = document.getElementById('filterType');
+        const rows = document.querySelectorAll('.report-row');
+
+        function filterTable() {
+            const query = searchInput.value.toLowerCase();
+            const priorityVal = prioritySelect.value;
+            const typeVal = typeSelect.value;
+
+            rows.forEach(row => {
+                const summary = row.dataset.summary;
+                const details = row.dataset.details;
+                const priority = row.dataset.priority;
+                const type = row.dataset.type;
+
+                const matchesSearch = summary.includes(query) || details.includes(query);
+                const matchesPriority = !priorityVal || priority === priorityVal;
+                const matchesType = !typeVal || type === typeVal;
+
+                if (matchesSearch && matchesPriority && matchesType) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        searchInput.addEventListener('input', filterTable);
+        prioritySelect.addEventListener('change', filterTable);
+        typeSelect.addEventListener('change', filterTable);
+
+        document.getElementById('btnResetFilters').addEventListener('click', () => {
+            searchInput.value = '';
+            prioritySelect.value = '';
+            typeSelect.value = '';
+            filterTable();
+        });
+
+        // Details Modal population
+        document.querySelectorAll('.btn-view-report').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const reportId = btn.dataset.id;
+                try {
+                    const response = await fetch(`/api/v1/reports/${reportId}`);
+                    const data = await response.json();
+                    if (!response.ok) {
+                        alert('Error loading report details');
+                        return;
+                    }
+
+                    // Populate fields
+                    document.getElementById('m-report-title').innerText = data.summary;
+                    document.getElementById('m-report-type').innerText = data.feedback_type.replace('_', ' ');
+                    document.getElementById('m-report-details').innerText = data.details;
+                    document.getElementById('m-report-status').innerText = data.status.toUpperCase();
+                    document.getElementById('m-report-followup').innerText = data.next_followup_date ? data.next_followup_date.substring(0, 10) : 'None scheduled';
+
+                    // Priority formatting
+                    const priorityEl = document.getElementById('m-report-priority');
+                    priorityEl.innerHTML = `<span class="badge-custom badge-${data.priority}">${data.priority.toUpperCase()}</span>`;
+
+                    // Populate Attachments
+                    const attachContainer = document.getElementById('m-report-attachments');
+                    attachContainer.innerHTML = '';
+                    if (data.attachments && data.attachments.length > 0) {
+                        data.attachments.forEach(attach => {
+                            const sizeKb = Math.round(attach.size / 1024);
+                            attachContainer.innerHTML += `
+                                <div class="col-md-6">
+                                    <div class="p-3 rounded bg-primary border d-flex justify-content-between align-items-center" style="border-color: var(--border-color);">
+                                        <div style="max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            <i class="fa-solid fa-file-arrow-down me-2 text-muted"></i>
+                                            <span class="small font-weight-500">${attach.filename}</span>
+                                            <div class="text-muted small" style="font-size: 0.75rem;">${sizeKb} KB</div>
+                                        </div>
+                                        <a href="/api/v1/attachments/${attach.id}/download" class="btn btn-dark-custom btn-sm"><i class="fa-solid fa-download"></i></a>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        attachContainer.innerHTML = '<div class="col-12 text-muted small px-3">No attachments uploaded with this report.</div>';
+                    }
+
+                    // Populate Followups
+                    const followContainer = document.getElementById('m-report-followups');
+                    followContainer.innerHTML = '';
+                    if (data.followups && data.followups.length > 0) {
+                        data.followups.forEach(f => {
+                            const dateStr = f.created_at.substring(0, 16).replace('T', ' ');
+                            followContainer.innerHTML += `
+                                <div class="list-group-item bg-transparent border-0 px-0 py-3 border-bottom" style="border-color: var(--border-color) !important;">
+                                    <div class="d-flex justify-content-between small text-muted mb-1">
+                                        <span><i class="fa-solid fa-user-pen me-1"></i>${f.manager_username}</span>
+                                        <span>${dateStr}</span>
+                                    </div>
+                                    <p class="mb-0 text-main small" style="white-space: pre-wrap;">${f.notes}</p>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        followContainer.innerHTML = '<div class="text-muted small py-3">No followup notes logged yet.</div>';
+                    }
+
+                    detailModal.show();
+                } catch (err) {
+                    alert('Error checking report details');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

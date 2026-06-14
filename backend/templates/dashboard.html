@@ -1,0 +1,246 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Total Reports -->
+    <div class="col-md-3">
+        <div class="glass-card kpi-card">
+            <div>
+                <span class="text-muted small">Total Reports</span>
+                <h3 class="m-0 mt-1 font-weight-700">{{ total_reports }}</h3>
+            </div>
+            <div class="kpi-icon" style="background-color: rgba(138, 75, 243, 0.15); color: var(--accent-primary);">
+                <i class="fa-solid fa-file-invoice"></i>
+            </div>
+        </div>
+    </div>
+    <!-- Open Reports -->
+    <div class="col-md-3">
+        <div class="glass-card kpi-card">
+            <div>
+                <span class="text-muted small">Open Reports</span>
+                <h3 class="m-0 mt-1 font-weight-700">{{ open_reports }}</h3>
+            </div>
+            <div class="kpi-icon" style="background-color: rgba(255, 193, 7, 0.15); color: var(--accent-warning);">
+                <i class="fa-solid fa-folder-open"></i>
+            </div>
+        </div>
+    </div>
+    <!-- Critical Reports -->
+    <div class="col-md-3">
+        <div class="glass-card kpi-card">
+            <div>
+                <span class="text-muted small">Critical Issues</span>
+                <h3 class="m-0 mt-1 font-weight-700 text-danger">{{ critical_reports }}</h3>
+            </div>
+            <div class="kpi-icon" style="background-color: rgba(220, 53, 69, 0.15); color: var(--accent-danger);">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+        </div>
+    </div>
+    <!-- Total Users -->
+    <div class="col-md-3">
+        <div class="glass-card kpi-card">
+            <div>
+                <span class="text-muted small">Active Personnel</span>
+                <h3 class="m-0 mt-1 font-weight-700">{{ total_users }}</h3>
+            </div>
+            <div class="kpi-icon" style="background-color: rgba(40, 167, 69, 0.15); color: var(--accent-success);">
+                <i class="fa-solid fa-user-gear"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-8">
+        <div class="glass-card">
+            <h5 class="mb-4">Reports Volume (Last 6 Months)</h5>
+            <div style="height: 300px; position: relative;">
+                <canvas id="reportsMonthChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="glass-card">
+            <h5 class="mb-4">Priority Distribution</h5>
+            <div style="height: 300px; position: relative;">
+                <canvas id="priorityChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent Reports Table -->
+    <div class="col-lg-7">
+        <div class="glass-card h-100">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h5 class="m-0">Recent Customer Reports</h5>
+                <a href="{{ url_for('admin_db.reports') }}" class="btn btn-dark-custom btn-sm">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark-custom">
+                    <thead>
+                        <tr>
+                            <th>Summary</th>
+                            <th>Contact</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if recent_reports %}
+                            {% for report in recent_reports %}
+                                <tr>
+                                    <td>
+                                        <div class="font-weight-500">{{ report.summary }}</div>
+                                        <div class="text-muted small">{{ report.feedback_type }}</div>
+                                    </td>
+                                    <td>{{ report.contact.name if report.contact else 'Unknown' }}</td>
+                                    <td>
+                                        <span class="badge-custom badge-{{ report.priority }}">{{ report.priority|upper }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-custom bg-secondary">{{ report.status|upper }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No reports registered yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Audit Logs -->
+    <div class="col-lg-5">
+        <div class="glass-card h-100">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <h5 class="m-0">Security Audit Feed</h5>
+                <a href="{{ url_for('admin_db.audit_logs') }}" class="btn btn-dark-custom btn-sm">View Logs</a>
+            </div>
+            <div class="list-group list-group-flush" style="background-color: transparent;">
+                {% if recent_audits %}
+                    {% for audit in recent_audits %}
+                        <div class="list-group-item bg-transparent border-0 px-0 py-3 d-flex align-items-start gap-3 border-bottom" style="border-color: var(--border-color) !important;">
+                            <div class="p-2 rounded bg-tertiary text-muted" style="width: 40px; text-align: center;">
+                                <i class="fa-solid fa-fingerprint"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between">
+                                    <span class="font-weight-600">{{ audit.action }}</span>
+                                    <span class="text-muted small">{{ audit.created_at.strftime('%H:%M:%S') }}</span>
+                                </div>
+                                <div class="text-muted small">
+                                    Entity: {{ audit.entity_type }} | IP: {{ audit.ip_address or 'System' }}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="fa-solid fa-shield-halved fa-2x mb-3 text-muted"></i>
+                        <div>No audit entries yet.</div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const response = await fetch('/api/v1/analytics');
+            const result = await response.json();
+            if (!response.ok) return;
+
+            const charts = result.charts;
+
+            // 1. Reports by Month
+            const monthLabels = Object.keys(charts.reports_by_month).reverse();
+            const monthData = Object.values(charts.reports_by_month).reverse();
+
+            const ctxMonth = document.getElementById('reportsMonthChart').getContext('2d');
+            new Chart(ctxMonth, {
+                type: 'line',
+                data: {
+                    labels: monthLabels,
+                    datasets: [{
+                        label: 'Submitted Reports',
+                        data: monthData,
+                        borderColor: '#8a4bf3',
+                        backgroundColor: 'rgba(138, 75, 243, 0.15)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#8c95a5' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#8c95a5' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // 2. Priority Distribution
+            const priorityDist = charts.priority_distribution;
+            const priorityLabels = ['low', 'medium', 'high', 'critical'].map(p => p.toUpperCase());
+            const priorityData = ['low', 'medium', 'high', 'critical'].map(p => priorityDist[p] || 0);
+
+            const ctxPriority = document.getElementById('priorityChart').getContext('2d');
+            new Chart(ctxPriority, {
+                type: 'doughnut',
+                data: {
+                    labels: priorityLabels,
+                    datasets: [{
+                        data: priorityData,
+                        backgroundColor: [
+                            'rgba(255, 255, 255, 0.15)',
+                            'rgba(255, 193, 7, 0.7)',
+                            'rgba(255, 87, 34, 0.7)',
+                            'rgba(220, 53, 69, 0.8)'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#8c95a5', padding: 15 }
+                        }
+                    }
+                }
+            });
+
+        } catch (err) {
+            console.error("Failed to load dashboard charts:", err);
+        }
+    });
+</script>
+{% endblock %}

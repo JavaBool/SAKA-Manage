@@ -1,0 +1,189 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <h4 class="m-0 font-weight-700">Analytics Board</h4>
+    <p class="text-muted small m-0">Consolidated charts and trends compiled from client feedback.</p>
+</div>
+
+<!-- Key Rate Metrics -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="glass-card text-center py-4">
+            <span class="text-muted small">Follow-up Completion Rate</span>
+            <h2 class="m-0 mt-2 font-weight-800 text-success" id="val-completion-rate">0.0%</h2>
+            <div class="progress mt-3 bg-dark" style="height: 6px; border-radius: 10px;">
+                <div class="progress-bar bg-success" role="progressbar" id="pb-completion-rate" style="width: 0%; border-radius: 10px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card text-center py-4">
+            <span class="text-muted small">Open Tickets Pending</span>
+            <h2 class="m-0 mt-2 font-weight-800 text-warning" id="val-open-tickets">0</h2>
+            <div class="text-muted small mt-2">Requires followup engagement</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card text-center py-4">
+            <span class="text-muted small">Escalated Critical Reports</span>
+            <h2 class="m-0 mt-2 font-weight-800 text-danger" id="val-critical-tickets">0</h2>
+            <div class="text-muted small mt-2">Immediate attention triggered</div>
+        </div>
+    </div>
+</div>
+
+<!-- Grid for Charts -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="glass-card h-100">
+            <h6 class="mb-4 text-muted small">Reports by Product Line</h6>
+            <div style="height: 250px; position: relative;">
+                <canvas id="productChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="glass-card h-100">
+            <h6 class="mb-4 text-muted small">Reports Submitted by Manager</h6>
+            <div style="height: 250px; position: relative;">
+                <canvas id="managerChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="glass-card h-100">
+            <h6 class="mb-4 text-muted small">Feature Requests Trends</h6>
+            <div style="height: 250px; position: relative;">
+                <canvas id="frTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="glass-card h-100">
+            <h6 class="mb-4 text-muted small">Customer Complaint Trends</h6>
+            <div style="height: 250px; position: relative;">
+                <canvas id="complaintTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const response = await fetch('/api/v1/analytics');
+            const result = await response.json();
+            if (!response.ok) return;
+
+            const metrics = result.metrics;
+            const charts = result.charts;
+
+            // Update KPI elements
+            const compRate = metrics.completion_rate;
+            document.getElementById('val-completion-rate').innerText = `${compRate}%`;
+            document.getElementById('pb-completion-rate').style.width = `${compRate}%`;
+            document.getElementById('val-open-tickets').innerText = metrics.open_reports + metrics.followup_pending_reports;
+            document.getElementById('val-critical-tickets').innerText = metrics.critical_reports;
+
+            const chartConfigDefaults = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#8c95a5' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#8c95a5' }
+                    }
+                }
+            };
+
+            // 1. Reports by Product
+            const prodLabels = Object.keys(charts.reports_by_product);
+            const prodData = Object.values(charts.reports_by_product);
+            new Chart(document.getElementById('productChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: prodLabels,
+                    datasets: [{
+                        data: prodData,
+                        backgroundColor: '#8a4bf3',
+                        borderRadius: 6
+                    }]
+                },
+                options: chartConfigDefaults
+            });
+
+            // 2. Reports by Manager
+            const mgrLabels = Object.keys(charts.reports_by_manager);
+            const mgrData = Object.values(charts.reports_by_manager);
+            new Chart(document.getElementById('managerChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: mgrLabels,
+                    datasets: [{
+                        data: mgrData,
+                        backgroundColor: '#ba4bf3',
+                        borderRadius: 6
+                    }]
+                },
+                options: chartConfigDefaults
+            });
+
+            // 3. Feature Request Trends (Last 6 Months)
+            const frLabels = Object.keys(charts.feature_requests_trend).reverse();
+            const frData = Object.values(charts.feature_requests_trend).reverse();
+            new Chart(document.getElementById('frTrendChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: frLabels,
+                    datasets: [{
+                        data: frData,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2
+                    }]
+                },
+                options: chartConfigDefaults
+            });
+
+            // 4. Complaint Trends (Last 6 Months)
+            const compLabels = Object.keys(charts.complaint_trend).reverse();
+            const compData = Object.values(charts.complaint_trend).reverse();
+            new Chart(document.getElementById('complaintTrendChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: compLabels,
+                    datasets: [{
+                        data: compData,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2
+                    }]
+                },
+                options: chartConfigDefaults
+            });
+
+        } catch (err) {
+            console.error("Failed to load analytics charts:", err);
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="mb-4">
+    <h4 class="m-0 font-weight-700">Settings & System Health</h4>
+    <p class="text-muted small m-0">Monitor server configuration parameters and core connection health.</p>
+</div>
+
+<div class="row g-4">
+    <!-- System Health Cards -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100">
+            <h5 class="mb-4">Connectivity Diagnostics</h5>
+            
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                <div>
+                    <div class="font-weight-600">Database Engine Connection</div>
+                    <span class="text-muted small">PostgreSQL/SQLite integration status</span>
+                </div>
+                {% if db_healthy %}
+                    <span class="badge-custom text-success" style="background-color: rgba(40,167,69,0.1);"><i class="fa-solid fa-circle-check me-1"></i>Healthy</span>
+                {% else %}
+                    <span class="badge-custom text-danger" style="background-color: rgba(220,53,69,0.1);"><i class="fa-solid fa-circle-exclamation me-1"></i>Error</span>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                <div>
+                    <div class="font-weight-600">Server Clock Synchronization</div>
+                    <span class="text-muted small">Current UTC hosting environment time</span>
+                </div>
+                <div class="font-weight-500 text-muted small">{{ server_time }}</div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="font-weight-600">Local Attachment Storage Volume</div>
+                    <span class="text-muted small">Capacity size used by uploaded reports files</span>
+                </div>
+                <div class="font-weight-500 text-muted small"><i class="fa-solid fa-hard-drive me-1 text-muted"></i>{{ storage_size_mb }} MB</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Settings Info -->
+    <div class="col-lg-6">
+        <div class="glass-card h-100">
+            <h5 class="mb-4">Administrator Config Summary</h5>
+            
+            <div class="mb-3">
+                <label class="form-label text-muted small">Primary Admin Identity (Email)</label>
+                <input type="text" class="form-control form-control-custom" readonly value="{{ admin_email }}">
+                <div class="form-text text-muted small" style="font-size: 0.75rem;">Configured externally in backend/config/admin_config.py.</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-muted small">Authentication Strategy</label>
+                <div class="p-3 rounded bg-primary border" style="border-color: var(--border-color); color: var(--text-muted); font-size: 0.85rem;">
+                    <i class="fa-solid fa-shield-halved text-success me-2"></i>
+                    Requires <strong>Credentials verification</strong> followed by a <strong>6-digit OTP dispatch</strong> on every authentication attempt. Sessions are secured using encrypted cookie headers.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
