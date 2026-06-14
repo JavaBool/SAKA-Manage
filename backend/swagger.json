@@ -17,6 +17,11 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "APIKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
       }
     }
   },
@@ -238,6 +243,59 @@
         "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Analytics calculations JSON" }
+        }
+      }
+    },
+    "/analytics/daily-target": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Retrieve the current daily contact target configuration",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Returns current DailyTarget object" }
+        }
+      },
+      "post": {
+        "tags": ["Analytics"],
+        "summary": "Update the daily target contacts goal (Boss/Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target_contacts": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["target_contacts"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Returns updated DailyTarget object" },
+          "400": { "description": "Invalid parameter" }
+        }
+      }
+    },
+    "/analytics/daily-summary": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Retrieve today's unique contacts handled vs target goal and report submissions list",
+        "security": [{ "BearerAuth": [] }, { "APIKeyAuth": [] }],
+        "responses": {
+          "200": { "description": "Returns progress details, target, and today_reports list" }
+        }
+      }
+    },
+    "/analytics/send-daily-summary": {
+      "post": {
+        "tags": ["Analytics"],
+        "summary": "Compile today's metrics and broadcast FCM summary notification to all active Bosses",
+        "security": [{ "BearerAuth": [] }, { "APIKeyAuth": [] }],
+        "responses": {
+          "200": { "description": "Summary compiled and dispatched. Returns detailed dispatch_results per boss/device token" }
         }
       }
     },
