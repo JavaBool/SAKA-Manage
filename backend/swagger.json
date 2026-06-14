@@ -51,6 +51,28 @@
         }
       }
     },
+    "/auth/profile": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Retrieve the current authenticated user profile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "User profile dict" },
+          "401": { "description": "Authentication required" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Logout current user (Invalidates/removes push device token)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Logged out successfully" },
+          "401": { "description": "Authentication required" }
+        }
+      }
+    },
     "/admin_auth/login": {
       "post": {
         "tags": ["Admin Authentication"],
@@ -137,6 +159,61 @@
         }
       }
     },
+    "/users/{user_id}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get a specific user detail",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "user_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "User details" },
+          "404": { "description": "User not found" }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update user details (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "user_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "email": { "type": "string" },
+                  "role": { "type": "string", "enum": ["BOSS", "MANAGER"] },
+                  "phone": { "type": "string" },
+                  "active": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "User updated" },
+          "404": { "description": "User not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Delete a user account (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "user_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "User deleted" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
     "/contacts": {
       "get": {
         "tags": ["Contacts"],
@@ -152,6 +229,42 @@
         "security": [{ "BearerAuth": [] }],
         "responses": {
           "201": { "description": "Contact created" }
+        }
+      }
+    },
+    "/contacts/{contact_id}": {
+      "get": {
+        "tags": ["Contacts"],
+        "summary": "Get contact by ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "contact_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Contact details" },
+          "404": { "description": "Contact not found" }
+        }
+      },
+      "put": {
+        "tags": ["Contacts"],
+        "summary": "Update contact details (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "contact_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Contact updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Contacts"],
+        "summary": "Delete contact (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "contact_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Contact deleted" }
         }
       }
     },
@@ -173,6 +286,41 @@
         }
       }
     },
+    "/products/{product_id}": {
+      "get": {
+        "tags": ["Products"],
+        "summary": "Get product by ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "product_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Product details" }
+        }
+      },
+      "put": {
+        "tags": ["Products"],
+        "summary": "Update product details or active state (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "product_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Product updated" }
+        }
+      },
+      "delete": {
+        "tags": ["Products"],
+        "summary": "Delete product (Admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "product_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Product deleted" }
+        }
+      }
+    },
     "/reports": {
       "get": {
         "tags": ["Reports"],
@@ -188,6 +336,30 @@
         "security": [{ "BearerAuth": [] }],
         "responses": {
           "201": { "description": "Report created" }
+        }
+      }
+    },
+    "/reports/{report_id}": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Get detailed feedback report by ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "report_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Report details" }
+        }
+      },
+      "put": {
+        "tags": ["Reports"],
+        "summary": "Update feedback report status or priority",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "report_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Report updated successfully" }
         }
       }
     },
@@ -233,6 +405,29 @@
         "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Notifications list" }
+        }
+      }
+    },
+    "/notifications/{notification_id}/read": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark a notification as read",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "notification_id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Notification updated" }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark all user notifications as read",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All notifications marked read" }
         }
       }
     },
@@ -321,6 +516,54 @@
         },
         "responses": {
           "201": { "description": "FCM Token registered" }
+        }
+      }
+    },
+    "/test-push": {
+      "post": {
+        "tags": ["Testing"],
+        "summary": "Debug/Test endpoint to send a push notification to any specified token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": { "type": "string" },
+                  "title": { "type": "string" },
+                  "message": { "type": "string" }
+                },
+                "required": ["token"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Test push completed" }
+        }
+      }
+    },
+    "/test-notification": {
+      "post": {
+        "tags": ["Testing"],
+        "summary": "Debug/Test endpoint to send a test push notification to all device tokens of the currently authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "message": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Test notification completed" }
         }
       }
     }
