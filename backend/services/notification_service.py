@@ -2,11 +2,15 @@ import os
 import sys
 import json
 import tempfile
+import queue
 import firebase_admin
 from firebase_admin import credentials, messaging
 from backend.models.database import db
 from backend.models.models import User, DeviceToken, Notification, AuditLog
 from backend.services.audit_service import log_action
+
+# Server-Sent Events active push queues: mapping user_id (str) -> list of queue.Queue
+sse_queues = {}
 
 # Initialize Firebase SDK
 _fcm_initialized = False
@@ -63,6 +67,16 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
             entity_id=notif.id,
             new_value={"recipient_id": str(recipient_user_id), "title": title}
         )
+
+        # 1.5. Push to SSE active streams
+        user_id_str = str(recipient_user_id)
+        if user_id_str in sse_queues:
+            notif_dict = notif.to_dict()
+            for q in sse_queues[user_id_str]:
+                try:
+                    q.put(notif_dict)
+                except Exception as sse_err:
+                    print(f"Error putting to SSE queue: {str(sse_err)}", file=sys.stderr)
 
         # 2. Get device tokens
         tokens = [t.fcm_token for t in DeviceToken.query.filter_by(user_id=recipient_user_id).all()]

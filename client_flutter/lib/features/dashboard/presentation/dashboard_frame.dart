@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/theme.dart';
 import 'package:client_flutter/features/auth/models/user_model.dart';
@@ -17,11 +20,174 @@ import 'package:client_flutter/features/products/presentation/products_view.dart
 // Local view manager state provider
 final activeMenuIndexProvider = StateProvider<int>((ref) => 0);
 
-class DashboardFrame extends ConsumerWidget {
+class DashboardFrame extends ConsumerStatefulWidget {
   const DashboardFrame({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardFrame> createState() => _DashboardFrameState();
+}
+
+class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowListener, TrayListener {
+
+  @override
+  void initState() {
+    super.initState();
+    if (Platform.isWindows) {
+      windowManager.addListener(this);
+      trayManager.addListener(this);
+      _initSystemTray();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (Platform.isWindows) {
+      windowManager.removeListener(this);
+      trayManager.removeListener(this);
+    }
+    super.dispose();
+  }
+
+  Future<void> _initSystemTray() async {
+    try {
+      await trayManager.setIcon('app_icon');
+      final Menu menu = Menu(
+        items: [
+          MenuItem(
+            key: 'show_window',
+            label: 'Open SAKA-Manage',
+          ),
+          MenuItem(
+            key: 'exit_app',
+            label: 'Exit Application',
+          ),
+        ],
+      );
+      await trayManager.setContextMenu(menu);
+      print("System tray initialized successfully.");
+    } catch (e) {
+      print("Error initializing system tray: $e");
+    }
+  }
+
+  @override
+  void onWindowClose() async {
+    final bool isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose) {
+      _handleWindowClose();
+    }
+  }
+
+  @override
+  void onTrayIconMouseDown() async {
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) async {
+    if (menuItem.key == 'show_window') {
+      await windowManager.show();
+      await windowManager.focus();
+    } else if (menuItem.key == 'exit_app') {
+      await windowManager.destroy();
+    }
+  }
+
+  Future<void> _handleWindowClose() async {
+    final storage = ref.read(apiClientProvider).storage;
+    final behavior = await storage.read(key: 'close_behavior');
+
+    if (behavior == 'exit') {
+      await windowManager.destroy();
+      return;
+    } else if (behavior == 'minimize') {
+      await windowManager.hide();
+      return;
+    }
+
+    if (!mounted) return;
+    
+    bool rememberChoice = false;
+    
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.darkCard,
+              title: const Text("SAKA-Manage Exit Options", style: TextStyle(color: AppTheme.textMain)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Do you want to close SAKA-Manage or minimize it to the system tray?",
+                    style: TextStyle(color: AppTheme.textMain),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Minimizing to the tray keeps the app running in the background so you can continue receiving real-time notifications.",
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Checkbox(
+                        activeColor: AppTheme.primary,
+                        value: rememberChoice,
+                        onChanged: (val) {
+                          setDialogState(() {
+                            rememberChoice = val ?? false;
+                          });
+                        },
+                      ),
+                      const Text("Remember my choice", style: TextStyle(fontSize: 13, color: AppTheme.textMain)),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'cancel'),
+                  child: const Text("CANCEL", style: TextStyle(color: AppTheme.textMuted)),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'exit'),
+                  child: const Text("EXIT", style: TextStyle(color: AppTheme.danger)),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, 'minimize'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text("MINIMIZE TO TRAY"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == 'exit') {
+      if (rememberChoice) {
+        await storage.write(key: 'close_behavior', value: 'exit');
+      }
+      await windowManager.destroy();
+    } else if (result == 'minimize') {
+      if (rememberChoice) {
+        await storage.write(key: 'close_behavior', value: 'minimize');
+      }
+      await windowManager.hide();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.listen<AsyncValue<UserModel?>>(authStateProvider, (previous, next) {
       if (next is AsyncData<UserModel?> && next.value == null) {
         context.go('/login');
