@@ -8,7 +8,10 @@ class Config:
     # SQLite fallback for local development if PostgreSQL is not available
     # Using an absolute path to the root 'instance' folder to prevent relative path mismatches
     _default_db_path = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "instance", "saka_manage.db"))
-    os.makedirs(os.path.dirname(_default_db_path), exist_ok=True)
+    try:
+        os.makedirs(os.path.dirname(_default_db_path), exist_ok=True)
+    except OSError:
+        pass
     db_url = os.environ.get("DATABASE_URL", f"sqlite:///{_default_db_path}")
     
     # Postgres compatibility (Railway sometimes outputs postgres:// instead of postgresql://)
@@ -35,4 +38,7 @@ class Config:
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads"))
     
     # Make sure upload folder exists
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    except OSError:
+        pass
