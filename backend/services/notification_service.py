@@ -101,6 +101,7 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
                 data_payload = {
                     "entity_type": str(entity_type) if entity_type else "",
                     "entity_id": str(entity_id) if entity_id else "",
+                    "notification_id": str(notif.id) if notif else "",
                     "click_action": "FLUTTER_NOTIFICATION_CLICK"
                 }
                 

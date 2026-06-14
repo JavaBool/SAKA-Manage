@@ -5,10 +5,10 @@ import 'package:client_flutter/features/auth/presentation/login_screen.dart';
 import 'package:client_flutter/features/dashboard/presentation/dashboard_frame.dart';
 import 'package:client_flutter/features/auth/repository/auth_repository.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
 final GoRouter appRouter = GoRouter(
-  navigatorKey: _rootNavigatorKey,
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
   redirect: (BuildContext context, GoRouterState state) async {
     String? token = AuthRepository.token;

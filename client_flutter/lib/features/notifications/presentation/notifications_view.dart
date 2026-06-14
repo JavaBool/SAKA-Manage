@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/theme.dart';
 import 'package:client_flutter/features/notifications/models/notification_model.dart';
+import 'package:client_flutter/features/notifications/presentation/notification_detail_view.dart';
 
 class NotificationsView extends ConsumerStatefulWidget {
   const NotificationsView({super.key});
@@ -206,7 +207,14 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
                                 onPressed: () => _markRead(n.id),
                               )
                             : null,
-                        onTap: !n.isRead ? () => _markRead(n.id) : null,
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => NotificationDetailView(notificationId: n.id),
+                            ),
+                          );
+                          _refreshNotifications();
+                        },
                       ),
                     );
                   },

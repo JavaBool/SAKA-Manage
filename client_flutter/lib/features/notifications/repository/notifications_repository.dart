@@ -43,6 +43,19 @@ class NotificationsRepository {
     return maps.map((json) => NotificationModel.fromJson(json)).toList();
   }
 
+  Future<NotificationModel?> getNotificationById(String id) async {
+    final db = await DbHelper.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'notifications',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (maps.isNotEmpty) {
+      return NotificationModel.fromJson(maps.first);
+    }
+    return null;
+  }
+
   Future<void> markAsRead(String notifId) async {
     final db = await DbHelper.database;
     
