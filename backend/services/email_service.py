@@ -14,6 +14,35 @@ def send_otp_email(recipient_email, otp):
     SMTP ports on free hosting platforms (Render/Hugging Face).
     Otherwise, falls back to standard Flask-Mail (SMTP).
     """
+    brevo_api_key = os.environ.get("BREVO_API_KEY")
+    if brevo_api_key:
+        try:
+            sender = os.environ.get("MAIL_DEFAULT_SENDER", "onboarding@resend.dev")
+            headers = {
+                "accept": "application/json",
+                "api-key": brevo_api_key,
+                "content-type": "application/json"
+            }
+            payload = {
+                "sender": {"email": sender},
+                "to": [{"email": recipient_email}],
+                "subject": "SAKA-Manage Administrator Login OTP",
+                "textContent": f"Your SAKA-Manage admin login OTP code is: {otp}\n\nThis code will expire in 10 minutes."
+            }
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers=headers,
+                timeout=10.0
+            )
+            if response.status_code in (200, 201, 202):
+                print(f"OTP email sent successfully via Brevo API to {recipient_email}")
+                return True
+            else:
+                print(f"Failed to send OTP email via Brevo API: {response.text}", file=sys.stderr)
+        except Exception as e:
+            print(f"Brevo API error: {str(e)}", file=sys.stderr)
+
     resend_api_key = os.environ.get("RESEND_API_KEY")
     if resend_api_key:
         try:
