@@ -1,0 +1,24 @@
+# Ignore the mobile client application from Docker image
+client_flutter/
+
+# Ignore local python virtual environments and caches
+venv/
+backend/venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore local database instance
+instance/
+backend/instance/
+backend/uploads/
+
+# Ignore Git files and IDE settings
+.git/
+.gitignore
+.vscode/
+.idea/
+.pytest_cache/
+.github/
+build/
