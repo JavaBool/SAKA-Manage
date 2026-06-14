@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
+from sqlalchemy import func
 from backend.models.database import db
 from backend.models.models import User
 from backend.services.audit_service import log_action
@@ -16,7 +17,10 @@ def login():
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
         
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter(
+        (func.lower(User.username) == func.lower(username)) |
+        (func.lower(User.email) == func.lower(username))
+    ).first()
     
     if not user or not user.active:
         log_action(

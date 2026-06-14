@@ -13,6 +13,27 @@ def test_user_login(client, seed_test_data):
     assert 'access_token' in data
     assert data['role'] == 'MANAGER'
     
+    # Case-insensitive username login
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'TEST_MANAGER',
+        'password': 'manager123'
+    })
+    assert resp.status_code == 200
+    
+    # Email-based login
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'manager@test.com',
+        'password': 'manager123'
+    })
+    assert resp.status_code == 200
+    
+    # Case-insensitive email-based login
+    resp = client.post('/api/v1/auth/login', json={
+        'username': 'MANAGER@TEST.COM',
+        'password': 'manager123'
+    })
+    assert resp.status_code == 200
+    
     # Invalid login
     resp = client.post('/api/v1/auth/login', json={
         'username': 'test_manager',
