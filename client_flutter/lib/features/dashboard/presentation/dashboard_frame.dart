@@ -106,7 +106,7 @@ class DashboardFrame extends ConsumerWidget {
         final bool isMobile = MediaQuery.of(context).size.width < 768;
 
         Widget buildSidebarContent({required bool inDrawer}) {
-          return Container(
+          final content = Container(
             color: AppTheme.darkCard,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             child: Column(
@@ -217,6 +217,11 @@ class DashboardFrame extends ConsumerWidget {
               ],
             ),
           );
+
+          if (inDrawer) {
+            return SafeArea(child: content);
+          }
+          return content;
         }
 
         if (isMobile) {

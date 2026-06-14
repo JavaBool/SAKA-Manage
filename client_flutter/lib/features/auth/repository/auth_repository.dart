@@ -8,6 +8,8 @@ class AuthRepository {
   final ApiClient apiClient;
   final storage = const FlutterSecureStorage();
 
+  static String? token;
+
   AuthRepository(this.apiClient);
 
   Future<UserModel?> login(String username, String password) async {
@@ -19,7 +21,8 @@ class AuthRepository {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        final String token = data['access_token'] as String;
+        final String tokenVal = data['access_token'] as String;
+        token = tokenVal;
         final userJson = data['user'] as Map<String, dynamic>;
         
         final user = UserModel.fromJson(userJson);
@@ -53,6 +56,7 @@ class AuthRepository {
     } catch (e) {
       print("Logout API call error: $e");
     } finally {
+      token = null;
       // Clear secure tokens
       await storage.delete(key: 'access_token');
       await storage.delete(key: 'user_role');
@@ -71,6 +75,7 @@ class AuthRepository {
   }
 
   Future<UserModel?> getCachedUser() async {
+    token ??= await storage.read(key: 'access_token');
     try {
       final db = await DbHelper.database;
       final maps = await db.query('users', limit: 1);

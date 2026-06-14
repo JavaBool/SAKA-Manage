@@ -820,7 +820,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                       const SizedBox(height: 6),
                                       Text(
                                         contact.address!,
-                                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 12, overflow: TextOverflow.ellipsis),
+                                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
                                       ),
                                     ],
                                     if (isMobile) ...[
@@ -833,7 +833,12 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                             children: [
                                               const Icon(Icons.phone, size: 12, color: AppTheme.textMuted),
                                               const SizedBox(width: 6),
-                                              Text(contact.phone!, style: const TextStyle(fontSize: 12, color: AppTheme.textMain)),
+                                              Expanded(
+                                                child: Text(
+                                                  contact.phone!,
+                                                  style: const TextStyle(fontSize: 12, color: AppTheme.textMain),
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -844,7 +849,12 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                             children: [
                                               const Icon(Icons.email, size: 12, color: AppTheme.textMuted),
                                               const SizedBox(width: 6),
-                                              Text(contact.email!, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                                              Expanded(
+                                                child: Text(
+                                                  contact.email!,
+                                                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                                                ),
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -855,12 +865,14 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                             children: [
                                               const Icon(Icons.language, size: 12, color: AppTheme.primary),
                                               const SizedBox(width: 6),
-                                              Text(
-                                                _displayUrl(contact.website!),
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: AppTheme.primary,
-                                                  decoration: TextDecoration.underline,
+                                              Expanded(
+                                                child: Text(
+                                                  _displayUrl(contact.website!),
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: AppTheme.primary,
+                                                    decoration: TextDecoration.underline,
+                                                  ),
                                                 ),
                                               ),
                                             ],

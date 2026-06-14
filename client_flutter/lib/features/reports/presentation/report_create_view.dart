@@ -160,15 +160,16 @@ class _ReportCreateViewState extends ConsumerState<ReportCreateView> {
       appBar: AppBar(
         title: const Text("New Feedback Report"),
       ),
-      body: _isLoading && _contacts.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+      body: SafeArea(
+        child: _isLoading && _contacts.isEmpty
+            ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                     // Contact Selection
                     DropdownButtonFormField<String>(
                       value: _selectedContactId,
@@ -327,6 +328,7 @@ class _ReportCreateViewState extends ConsumerState<ReportCreateView> {
                 ),
               ),
             ),
+      ),
     );
   }
 }

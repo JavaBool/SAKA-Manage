@@ -126,8 +126,9 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
       appBar: AppBar(
         title: const Text("Report Detail Summary"),
       ),
-      body: FutureBuilder<ReportModel>(
-        future: _reportFuture,
+      body: SafeArea(
+        child: FutureBuilder<ReportModel>(
+          future: _reportFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
@@ -436,6 +437,7 @@ class _ReportDetailViewState extends ConsumerState<ReportDetailView> {
             ),
           );
         },
+      ),
       ),
     );
   }
