@@ -171,16 +171,51 @@ class _ReportCreateViewState extends ConsumerState<ReportCreateView> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                     // Contact Selection
-                    DropdownButtonFormField<String>(
-                      value: _selectedContactId,
-                      decoration: const InputDecoration(labelText: "Customer Contact"),
-                      items: _contacts.map((c) {
-                        return DropdownMenuItem(
-                          value: c.id,
-                          child: Text("${c.name} (${c.company ?? 'Individual'})"),
+                    InkWell(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: AppTheme.darkCard,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          constraints: const BoxConstraints(
+                            maxWidth: 600,
+                          ),
+                          builder: (context) {
+                            return _ContactSearchSheet(
+                              contacts: _contacts,
+                              initialSelectedId: _selectedContactId,
+                              onSelected: (contact) {
+                                setState(() {
+                                  _selectedContactId = contact.id;
+                                });
+                                Navigator.of(context).pop();
+                              },
+                            );
+                          },
                         );
-                      }).toList(),
-                      onChanged: (val) => setState(() => _selectedContactId = val),
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: "Customer Contact",
+                          suffixIcon: Icon(Icons.arrow_drop_down),
+                        ),
+                        child: Text(
+                          _contacts.isEmpty
+                              ? "No contacts loaded"
+                              : (() {
+                                  final selected = _contacts.where((c) => c.id == _selectedContactId);
+                                  if (selected.isEmpty) return "Select Contact";
+                                  final contact = selected.first;
+                                  return "${contact.name} (${contact.company ?? 'Individual'})";
+                                })(),
+                          style: TextStyle(
+                            color: _selectedContactId == null ? AppTheme.textMuted : AppTheme.textMain,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     // Product Selection
@@ -328,6 +363,138 @@ class _ReportCreateViewState extends ConsumerState<ReportCreateView> {
                 ),
               ),
             ),
+      ),
+    );
+  }
+}
+
+class _ContactSearchSheet extends StatefulWidget {
+  final List<ContactModel> contacts;
+  final String? initialSelectedId;
+  final ValueChanged<ContactModel> onSelected;
+
+  const _ContactSearchSheet({
+    required this.contacts,
+    required this.initialSelectedId,
+    required this.onSelected,
+  });
+
+  @override
+  State<_ContactSearchSheet> createState() => _ContactSearchSheetState();
+}
+
+class _ContactSearchSheetState extends State<_ContactSearchSheet> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.contacts.where((c) {
+      final query = _searchQuery.toLowerCase().trim();
+      if (query.isEmpty) return true;
+      return c.name.toLowerCase().contains(query) ||
+             (c.company != null && c.company!.toLowerCase().contains(query)) ||
+             (c.phone != null && c.phone!.contains(query)) ||
+             (c.email != null && c.email!.toLowerCase().contains(query));
+    }).toList();
+
+    return Container(
+      padding: EdgeInsets.only(
+        top: 16,
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Select Customer Contact",
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _searchController,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: "Search name, company, email...",
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                          _searchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+            ),
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: filtered.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32.0),
+                    child: Center(
+                      child: Text(
+                        "No contacts match your search.",
+                        style: TextStyle(color: AppTheme.textMuted),
+                      ),
+                    ),
+                  )
+                : Container(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.4,
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final contact = filtered[index];
+                        final isSelected = contact.id == widget.initialSelectedId;
+                        return ListTile(
+                          title: Text(contact.name),
+                          subtitle: Text(
+                            [
+                              contact.company ?? 'Individual',
+                              if (contact.phone != null && contact.phone!.isNotEmpty) contact.phone,
+                            ].join(' • '),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_circle, color: AppTheme.primary)
+                              : null,
+                          selected: isSelected,
+                          onTap: () => widget.onSelected(contact),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
