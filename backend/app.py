@@ -1,4 +1,12 @@
 import os
+import sys
+
+# Ensure the parent directory of this file is in the python system path
+# so that the 'backend' package imports resolve correctly in serverless/Vercel environments.
+_root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _root_dir not in sys.path:
+    sys.path.insert(0, _root_dir)
+
 from flask import Flask, redirect, url_for, jsonify, send_from_directory
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
