@@ -1,10 +1,11 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
   final Dio dio;
   final storage = const FlutterSecureStorage();
-  void Function()? onUnauthorized;
+  void Function(String reason, Map<String, dynamic> details)? onUnauthorized;
 
   // Primary API endpoint config
   static const String apiBaseUrl = String.fromEnvironment(
@@ -26,10 +27,62 @@ class ApiClient {
         }
         return handler.next(options);
       },
-      onError: (DioException error, handler) {
+      onError: (DioException error, handler) async {
         if (error.response?.statusCode == 401) {
+          final token = await storage.read(key: 'access_token');
+          final userId = await storage.read(key: 'user_id');
+          final url = error.requestOptions.uri.toString();
+          final body = error.response?.data;
+          final headers = error.response?.headers.toString();
+          final timestamp = DateTime.now().toIso8601String();
+
+          print("[AUTH_DEBUG]\n401 received\nEndpoint: $url\nBody: $body\nHeaders: $headers\nTimestamp: $timestamp\nCurrent user id: $userId");
+
+          final Map<String, dynamic> details = {
+            'request_url': url,
+            'endpoint_involved': url, // compatibility
+            'http_method': error.requestOptions.method,
+            'response_body': body,
+            'response_headers': error.response?.headers.map,
+            'user_id': userId,
+            'current_timestamp': DateTime.now().toUtc().toIso8601String(),
+            'current_time': DateTime.now().toUtc().toIso8601String(), // compatibility
+            'http_status_code': 401,
+          };
+
+          String reason = 'http_401';
+          if (token != null) {
+            try {
+              final parts = token.split('.');
+              if (parts.length == 3) {
+                final payload = parts[1];
+                final normalized = base64.normalize(payload);
+                final decoded = utf8.decode(base64.decode(normalized));
+                final map = json.decode(decoded) as Map<String, dynamic>;
+                final expVal = map['exp'];
+                if (expVal is int) {
+                  final expTime = DateTime.fromMillisecondsSinceEpoch(expVal * 1000).toUtc();
+                  final expStr = expTime.toIso8601String();
+                  details['jwt_exp'] = expStr;
+                  details['jwt_expiration_timestamp'] = expStr;
+                  final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+                  final diff = expVal - nowSeconds;
+                  details['seconds_until_jwt_expiry'] = diff;
+                  details['difference_in_seconds'] = diff;
+                  if (nowSeconds >= expVal) {
+                    reason = 'jwt_expiration';
+                  } else {
+                    reason = 'user_deactivated';
+                  }
+                }
+              }
+            } catch (e) {
+              print("[AUTH_DEBUG] Error decoding JWT in 401 handler: $e");
+            }
+          }
+
           if (onUnauthorized != null) {
-            onUnauthorized!();
+            onUnauthorized!(reason, details);
           }
         }
         return handler.next(error);

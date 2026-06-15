@@ -99,6 +99,7 @@ def create_and_send_notification(recipient_user_id, title, message, entity_type=
 
         # 2. Get device tokens
         tokens = [t.fcm_token for t in DeviceToken.query.filter_by(user_id=recipient_user_id).all()]
+        tokens = list(set(tokens))
         token_count = len(tokens)
         if not tokens:
             dispatch_summary = {

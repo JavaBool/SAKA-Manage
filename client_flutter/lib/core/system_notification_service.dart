@@ -22,6 +22,14 @@ class SystemNotificationService {
 
   SystemNotificationService(this.ref);
 
+  void _switchToTab(String title) {
+    final menuItems = ref.read(menuItemsProvider);
+    final index = menuItems.indexWhere((item) => item['title'] == title);
+    if (index != -1) {
+      ref.read(activeMenuIndexProvider.notifier).state = index;
+    }
+  }
+
   void _handleNotificationTap(Map<String, dynamic> data) {
     print("Notification tapped with data: $data");
     
@@ -38,13 +46,12 @@ class SystemNotificationService {
           return;
         }
         
-        final isBoss = user.role == 'BOSS';
         final context = rootNavigatorKey.currentContext;
         
         if (context != null) {
           if (entityType == 'report' && entityId.isNotEmpty) {
-            // Switch to Reports tab (Index 2 for both Boss and Manager)
-            ref.read(activeMenuIndexProvider.notifier).state = 2;
+            // Switch to Reports tab dynamically
+            _switchToTab('Reports');
             
             // Push Report Detail page on root navigator
             Navigator.of(context).push(
@@ -53,11 +60,11 @@ class SystemNotificationService {
               ),
             );
           } else if (entityType == 'daily_target') {
-            // Switch to Daily Targets tab (Index 7 for Boss, Index 4 for Manager)
-            ref.read(activeMenuIndexProvider.notifier).state = isBoss ? 7 : 4;
+            // Switch to Daily Targets tab dynamically
+            _switchToTab('Daily Targets');
           } else if (notificationId.isNotEmpty) {
-            // Switch to Notifications Center tab (Index 6 for Boss, Index 3 for Manager)
-            ref.read(activeMenuIndexProvider.notifier).state = isBoss ? 6 : 3;
+            // Switch to Notifications Center tab dynamically
+            _switchToTab('Notifications');
             
             // Push Notification Detail page on root navigator
             Navigator.of(context).push(
@@ -66,8 +73,8 @@ class SystemNotificationService {
               ),
             );
           } else {
-            // Default to Notifications Center tab (Index 6 for Boss, Index 3 for Manager)
-            ref.read(activeMenuIndexProvider.notifier).state = isBoss ? 6 : 3;
+            // Default to Notifications Center tab dynamically
+            _switchToTab('Notifications');
           }
         }
       } catch (e) {

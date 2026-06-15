@@ -17,6 +17,7 @@ import 'package:client_flutter/features/dashboard/presentation/boss_analytics_vi
 import 'package:client_flutter/features/dashboard/presentation/boss_audit_logs_view.dart';
 import 'package:client_flutter/features/products/presentation/products_view.dart';
 import 'package:client_flutter/features/analytics/presentation/daily_targets_view.dart';
+import 'package:client_flutter/features/dashboard/presentation/auth_diagnostics_view.dart';
 
 // Local view manager state provider
 final activeMenuIndexProvider = StateProvider<int>((ref) => 0);
@@ -209,74 +210,46 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
 
         final int activeIndex = ref.watch(activeMenuIndexProvider);
         final bool isBoss = user.role == 'BOSS';
+        final menuItems = ref.watch(menuItemsProvider);
+        final bool isDevMode = ref.watch(developerModeProvider);
 
-        // Define Menus dynamically based on role
-        final List<Map<String, dynamic>> menuItems = isBoss
-            ? [
-                {'title': 'Dashboard', 'icon': Icons.analytics_outlined},
-                {'title': 'Contacts', 'icon': Icons.contact_phone_outlined},
-                {'title': 'Reports', 'icon': Icons.description_outlined},
-                {'title': 'Products', 'icon': Icons.shopping_bag_outlined},
-                {'title': 'Personnel', 'icon': Icons.badge_outlined},
-                {'title': 'Audit Logs', 'icon': Icons.fingerprint_outlined},
-                {'title': 'Notifications', 'icon': Icons.notifications_none_outlined},
-                {'title': 'Daily Targets', 'icon': Icons.track_changes_outlined},
-              ]
-            : [
-                {'title': 'Dashboard', 'icon': Icons.assessment_outlined},
-                {'title': 'Contacts', 'icon': Icons.contact_mail_outlined},
-                {'title': 'Reports', 'icon': Icons.rate_review_outlined},
-                {'title': 'Notifications', 'icon': Icons.notifications_none_outlined},
-                {'title': 'Daily Targets', 'icon': Icons.track_changes_outlined},
-              ];
+        if (activeIndex >= menuItems.length) {
+          Future.microtask(() {
+            ref.read(activeMenuIndexProvider.notifier).state = 0;
+          });
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
 
-        // Switch to correct view
+        final itemTitle = menuItems[activeIndex]['title'] as String;
         Widget activeView = const SizedBox();
-        if (isBoss) {
-          switch (activeIndex) {
-            case 0:
-              activeView = const BossAnalyticsView();
-              break;
-            case 1:
-              activeView = const ContactsView();
-              break;
-            case 2:
-              activeView = const ReportsView();
-              break;
-            case 3:
-              activeView = const ProductsView();
-              break;
-            case 4:
-              activeView = const ManagersListView();
-              break;
-            case 5:
-              activeView = const BossAuditLogsView();
-              break;
-            case 6:
-              activeView = const NotificationsView();
-              break;
-            case 7:
-              activeView = const DailyTargetsView();
-              break;
-          }
-        } else {
-          switch (activeIndex) {
-            case 0:
-              activeView = const ManagerSummaryView();
-              break;
-            case 1:
-              activeView = const ContactsView();
-              break;
-            case 2:
-              activeView = const ReportsView();
-              break;
-            case 3:
-              activeView = const NotificationsView();
-              break;
-            case 4:
-              activeView = const DailyTargetsView();
-              break;
-          }
+        switch (itemTitle) {
+          case 'Dashboard':
+            activeView = isBoss ? const BossAnalyticsView() : const ManagerSummaryView();
+            break;
+          case 'Contacts':
+            activeView = const ContactsView();
+            break;
+          case 'Reports':
+            activeView = const ReportsView();
+            break;
+          case 'Products':
+            activeView = const ProductsView();
+            break;
+          case 'Personnel':
+            activeView = const ManagersListView();
+            break;
+          case 'Audit Logs':
+            activeView = const BossAuditLogsView();
+            break;
+          case 'Notifications':
+            activeView = const NotificationsView();
+            break;
+          case 'Daily Targets':
+            activeView = const DailyTargetsView();
+            break;
+          case 'Auth Diagnostics':
+            activeView = const AuthDiagnosticsView();
+            break;
         }
 
         final bool isMobile = MediaQuery.of(context).size.width < 768;
@@ -390,6 +363,29 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Developer Mode",
+                      style: TextStyle(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(
+                      height: 20,
+                      child: Transform.scale(
+                        scale: 0.7,
+                        child: Switch(
+                          value: isDevMode,
+                          activeColor: AppTheme.primary,
+                          onChanged: (val) {
+                            ref.read(developerModeProvider.notifier).toggle(val);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
                 if (inDrawer) ...[
                   const SizedBox(height: 16),
                   const Align(
@@ -440,7 +436,7 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
                       child: activeView,
                     ),
                     Positioned(
-                      bottom: 16,
+                      bottom: MediaQuery.of(context).padding.bottom + 16,
                       right: 16,
                       child: const ServerSwitcherWidget(),
                     ),

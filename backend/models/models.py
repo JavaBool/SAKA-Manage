@@ -207,17 +207,21 @@ class DeviceToken(db.Model):
     
     id = db.Column(db.Uuid, primary_key=True, default=uuid.uuid4)
     user_id = db.Column(db.Uuid, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    device_id = db.Column(db.String(255), nullable=False)
     platform = db.Column(db.String(50), nullable=False)  # android, windows, etc.
-    fcm_token = db.Column(db.String(255), nullable=False)
+    fcm_token = db.Column(db.String(255), nullable=False, unique=True)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    last_seen = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     def to_dict(self):
         return {
             'id': str(self.id),
             'user_id': str(self.user_id),
+            'device_id': self.device_id,
             'platform': self.platform,
             'fcm_token': self.fcm_token,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_seen': self.last_seen.isoformat() if self.last_seen else None
         }
 
 class AuditLog(db.Model):

@@ -104,11 +104,12 @@ class AuthRepository {
     return null;
   }
 
-  Future<void> registerDeviceToken(String fcmToken, String platform) async {
+  Future<void> registerDeviceToken(String fcmToken, String platform, String deviceId) async {
     try {
       await apiClient.post('/device_tokens', data: {
         'platform': platform,
         'fcm_token': fcmToken,
+        'device_id': deviceId,
       });
     } catch (e) {
       print("Failed to register device token with backend: $e");

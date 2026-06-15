@@ -37,7 +37,28 @@ jwt = JWTManager(app)
 mail.init_app(app)
 
 with app.app_context():
-    db.create_all()
+    try:
+        from flask_migrate import upgrade, stamp
+        inspector = db.inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        if not tables:
+            print("Database is empty. Running all migrations to initialize...", flush=True)
+            upgrade()
+        else:
+            if 'alembic_version' not in tables and 'users' in tables:
+                print("Database tables exist but migration history is missing. Stamping to head...", flush=True)
+                stamp(revision='head')
+            
+            print("Applying database migrations...", flush=True)
+            upgrade()
+            print("Database migrations applied successfully.", flush=True)
+    except Exception as e:
+        print(f"Warning: Database migration auto-application failed: {e}", file=sys.stderr, flush=True)
+        try:
+            db.create_all()
+        except Exception as create_err:
+            print(f"Critical: db.create_all fallback failed: {create_err}", file=sys.stderr, flush=True)
 
 # Register Blueprints
 app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')

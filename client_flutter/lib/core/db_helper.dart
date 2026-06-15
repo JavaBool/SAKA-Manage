@@ -25,7 +25,7 @@ class DbHelper {
     
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -42,6 +42,16 @@ class DbHelper {
           target_contacts INTEGER,
           created_at TEXT,
           updated_at TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE auth_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          timestamp TEXT,
+          event_type TEXT,
+          details TEXT
         )
       ''');
     }
@@ -153,6 +163,15 @@ class DbHelper {
         updated_at TEXT
       )
     ''');
+    // 9. Auth Events Logs Cache
+    await db.execute('''
+      CREATE TABLE auth_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT,
+        event_type TEXT,
+        details TEXT
+      )
+    ''');
   }
 
   // --- Sync Queue Helpers ---
@@ -175,5 +194,39 @@ class DbHelper {
   static Future<void> removeQueueItem(int id) async {
     final db = await database;
     await db.delete('sync_queue', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // --- Auth Events Diagnostics Logging ---
+
+  static Future<void> logAuthEvent(String eventType, Map<String, dynamic> details) async {
+    try {
+      final db = await database;
+      await db.insert('auth_events', {
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+        'event_type': eventType,
+        'details': jsonEncode(details)
+      });
+      // Maintain last 100 events limit
+      await db.execute('''
+        DELETE FROM auth_events 
+        WHERE id NOT IN (
+          SELECT id FROM auth_events 
+          ORDER BY id DESC 
+          LIMIT 100
+        )
+      ''');
+    } catch (e) {
+      print("[AUTH_DEBUG] Error logging auth event in SQLite: $e");
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getAuthEvents() async {
+    try {
+      final db = await database;
+      return await db.query('auth_events', orderBy: 'id DESC');
+    } catch (e) {
+      print("[AUTH_DEBUG] Error retrieving auth events from SQLite: $e");
+      return [];
+    }
   }
 }
