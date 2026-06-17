@@ -30,7 +30,7 @@ class BackendUrlNotifier extends StateNotifier<String> {
   static const String renderUrl = 'https://saka-manage.onrender.com/api/v1';
   static const String vercelUrl = 'https://saka-manage.vercel.app/api/v1';
 
-  BackendUrlNotifier(this._storage) : super(huggingFaceUrl) {
+  BackendUrlNotifier(this._storage) : super(vercelUrl) {
     _loadUrl();
   }
 
