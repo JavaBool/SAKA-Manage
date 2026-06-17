@@ -24,6 +24,7 @@ class AuthRepository {
         final data = response.data;
         final String tokenVal = data['access_token'] as String;
         token = tokenVal;
+        ApiClient.accessToken = tokenVal;
         final userJson = data['user'] as Map<String, dynamic>;
         
         final user = UserModel.fromJson(userJson);
@@ -66,6 +67,7 @@ class AuthRepository {
       print("Logout API call error: $e");
     } finally {
       token = null;
+      ApiClient.accessToken = null;
       // Clear secure tokens
       await storage.delete(key: 'access_token');
       await storage.delete(key: 'user_role');
@@ -85,6 +87,9 @@ class AuthRepository {
 
   Future<UserModel?> getCachedUser() async {
     token ??= await storage.read(key: 'access_token');
+    if (token != null) {
+      ApiClient.accessToken = token;
+    }
     final activeId = await storage.read(key: 'user_id');
     if (activeId == null) return null;
     

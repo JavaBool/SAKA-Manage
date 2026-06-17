@@ -7,6 +7,9 @@ class ApiClient {
   final storage = const FlutterSecureStorage();
   void Function(String reason, Map<String, dynamic> details)? onUnauthorized;
 
+  // Static token cache to avoid slow secure storage reads and race conditions
+  static String? accessToken;
+
   // Primary API endpoint config
   static const String apiBaseUrl = String.fromEnvironment(
     'BACKEND_URL',
@@ -20,8 +23,14 @@ class ApiClient {
   )) {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        // Read auth token from secure storage and inject in headers
-        final token = await storage.read(key: 'access_token');
+        // Read auth token from static cache or secure storage and inject in headers
+        String? token = accessToken;
+        if (token == null) {
+          token = await storage.read(key: 'access_token');
+          if (token != null) {
+            accessToken = token;
+          }
+        }
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -81,7 +90,9 @@ class ApiClient {
             }
           }
 
-          if (onUnauthorized != null) {
+          // Ignore 401 errors for non-critical endpoints like device token registration
+          final isDeviceTokenRequest = url.contains('/device_tokens');
+          if (onUnauthorized != null && !isDeviceTokenRequest) {
             onUnauthorized!(reason, details);
           }
         }
