@@ -92,6 +92,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 
   AuthNotifier(this._authRepository) : super(const AsyncValue.data(null)) {
     _loadCachedUser();
+    _listenToTokenRefresh();
   }
 
   Map<String, dynamic> _getJwtMetadata(String? token) {
@@ -326,26 +327,53 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     }
   }
 
+  void _listenToTokenRefresh() {
+    if (Platform.isAndroid) {
+      FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+        print("[FCM_DEBUG] onTokenRefresh fired. Refreshed token: $token");
+        final user = state.value;
+        if (user != null) {
+          final storage = _authRepository.storage;
+          String? deviceId = await storage.read(key: 'device_id');
+          if (deviceId == null) {
+            deviceId = const Uuid().v4();
+            await storage.write(key: 'device_id', value: deviceId);
+          }
+          print("[FCM_DEBUG] User is logged in. Registering refreshed token to backend...");
+          await _authRepository.registerDeviceToken(token, 'android', deviceId);
+        } else {
+          print("[FCM_DEBUG] User is not logged in. Postponing registration.");
+        }
+      });
+    }
+  }
+
   Future<void> _registerFCMToken() async {
     try {
       final storage = _authRepository.storage;
       String? deviceId = await storage.read(key: 'device_id');
+      print("[FCM_DEBUG] Registering FCM token. Read Device ID: $deviceId");
       if (deviceId == null) {
         deviceId = const Uuid().v4();
         await storage.write(key: 'device_id', value: deviceId);
+        print("[FCM_DEBUG] Generated new Device ID: $deviceId");
       }
 
       if (Platform.isAndroid) {
         final messaging = FirebaseMessaging.instance;
+        print("[FCM_DEBUG] Requesting notification permissions...");
         await messaging.requestPermission(
           alert: true,
           badge: true,
           sound: true,
         );
+        print("[FCM_DEBUG] Fetching FCM token...");
         final token = await messaging.getToken();
         if (token != null) {
-          print("FCM Token: $token");
+          print("[FCM_DEBUG] FCM Token fetched successfully: $token");
           await _authRepository.registerDeviceToken(token, 'android', deviceId);
+        } else {
+          print("[FCM_DEBUG] FCM Token is null. Skipping registration.");
         }
       } else if (Platform.isWindows) {
         print("FCM is skipped on native Windows desktop. Device ID: $deviceId");

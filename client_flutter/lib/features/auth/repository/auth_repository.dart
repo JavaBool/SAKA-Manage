@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:dio/dio.dart';
 import 'package:client_flutter/core/api_client.dart';
 import 'package:client_flutter/core/db_helper.dart';
 import 'package:client_flutter/features/auth/models/user_model.dart';
@@ -106,13 +107,18 @@ class AuthRepository {
 
   Future<void> registerDeviceToken(String fcmToken, String platform, String deviceId) async {
     try {
-      await apiClient.post('/device_tokens', data: {
+      final response = await apiClient.post('/device_tokens', data: {
         'platform': platform,
         'fcm_token': fcmToken,
         'device_id': deviceId,
       });
+      print("[FCM_DEBUG] Token registration request successful. Status code: ${response.statusCode}");
     } catch (e) {
-      print("Failed to register device token with backend: $e");
+      if (e is DioException) {
+        print("[FCM_DEBUG] Failed to register device token. Status: ${e.response?.statusCode}, Body: ${e.response?.data}");
+      } else {
+        print("[FCM_DEBUG] Failed to register device token. Error: $e");
+      }
     }
   }
 }
