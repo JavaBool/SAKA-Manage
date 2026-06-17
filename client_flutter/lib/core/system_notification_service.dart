@@ -14,6 +14,7 @@ import 'package:client_flutter/features/notifications/models/notification_model.
 import 'package:client_flutter/features/reports/presentation/report_detail_view.dart';
 import 'package:client_flutter/features/notifications/presentation/notification_detail_view.dart';
 import 'package:client_flutter/core/db_helper.dart';
+import 'package:window_manager/window_manager.dart';
 
 class SystemNotificationService {
   final Ref ref;
@@ -32,6 +33,16 @@ class SystemNotificationService {
 
   void _handleNotificationTap(Map<String, dynamic> data) {
     print("Notification tapped with data: $data");
+    
+    // On Windows, restore and focus the window when a notification is tapped
+    if (Platform.isWindows) {
+      try {
+        windowManager.show();
+        windowManager.focus();
+      } catch (e) {
+        print("Error focusing window on notification tap: $e");
+      }
+    }
     
     final entityType = data['entity_type'] ?? '';
     final entityId = data['entity_id'] ?? '';
@@ -233,6 +244,9 @@ class SystemNotificationService {
         title: title,
         body: message,
       );
+      notification.onClick = () {
+        _handleNotificationTap(data ?? {});
+      };
       await notification.show();
     }
   }

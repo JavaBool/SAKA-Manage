@@ -34,10 +34,10 @@ class NotificationsRepository {
       print("Notifications fetch error, loading from local cache: $e");
     }
 
-    return await _getCachedNotifications();
+    return await getCachedNotifications();
   }
 
-  Future<List<NotificationModel>> _getCachedNotifications() async {
+  Future<List<NotificationModel>> getCachedNotifications() async {
     final db = await DbHelper.database;
     final List<Map<String, dynamic>> maps = await db.query('notifications', orderBy: 'created_at DESC');
     return maps.map((json) => NotificationModel.fromJson(json)).toList();

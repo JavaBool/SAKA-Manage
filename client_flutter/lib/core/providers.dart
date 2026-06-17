@@ -15,6 +15,7 @@ import 'package:client_flutter/features/reports/repository/reports_repository.da
 import 'package:client_flutter/features/notifications/repository/notifications_repository.dart';
 import 'package:client_flutter/features/analytics/repository/analytics_repository.dart';
 import 'package:client_flutter/core/sync_controller.dart';
+import 'package:client_flutter/core/windows_notification_poller.dart';
 
 // Core Providers
 final backendUrlProvider = StateNotifierProvider<BackendUrlNotifier, String>((ref) {
@@ -89,8 +90,9 @@ final Provider<AnalyticsRepository> analyticsRepositoryProvider = Provider<Analy
 // Auth State Notifier
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository _authRepository;
+  final Ref _ref;
 
-  AuthNotifier(this._authRepository) : super(const AsyncValue.data(null)) {
+  AuthNotifier(this._authRepository, this._ref) : super(const AsyncValue.data(null)) {
     _loadCachedUser();
     _listenToTokenRefresh();
   }
@@ -248,6 +250,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 
         state = AsyncValue.data(user);
         _registerFCMToken();
+        if (Platform.isWindows) {
+          _ref.read(windowsNotificationPollerProvider).start();
+        }
       }
     } catch (e, st) {
       print("[AUTH_DEBUG] Unexpected exception during startup: $e");
@@ -280,6 +285,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
           ..._getJwtMetadata(token),
         });
         _registerFCMToken();
+        if (Platform.isWindows) {
+          _ref.read(windowsNotificationPollerProvider).start();
+        }
       }
       return user != null;
     } catch (e, st) {
@@ -290,6 +298,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 
   Future<void> logout({String reason = 'manual_logout', Map<String, dynamic>? details}) async {
     print("[AUTH_DEBUG]\nLogout triggered\nReason: $reason");
+    if (Platform.isWindows) {
+      _ref.read(windowsNotificationPollerProvider).stop();
+    }
 
     // Read current session info to enrich logs before clearing them
     String? userId;
@@ -385,7 +396,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 }
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AsyncValue<UserModel?>>((ref) {
-  return AuthNotifier(ref.watch(authRepositoryProvider));
+  return AuthNotifier(ref.watch(authRepositoryProvider), ref);
 });
 
 // Developer Mode Persistent Settings Provider

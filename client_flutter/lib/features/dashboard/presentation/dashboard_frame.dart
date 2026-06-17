@@ -93,6 +93,7 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
       await windowManager.focus();
     } else if (menuItem.key == 'exit_app') {
       await windowManager.destroy();
+      exit(0);
     }
   }
 
@@ -102,7 +103,7 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
 
     if (behavior == 'exit') {
       await windowManager.destroy();
-      return;
+      exit(0);
     } else if (behavior == 'minimize') {
       await windowManager.hide();
       return;
@@ -180,6 +181,7 @@ class _DashboardFrameState extends ConsumerState<DashboardFrame> with WindowList
         await storage.write(key: 'close_behavior', value: 'exit');
       }
       await windowManager.destroy();
+      exit(0);
     } else if (result == 'minimize') {
       if (rememberChoice) {
         await storage.write(key: 'close_behavior', value: 'minimize');
