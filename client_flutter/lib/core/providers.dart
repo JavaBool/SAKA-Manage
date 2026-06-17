@@ -91,6 +91,7 @@ final Provider<AnalyticsRepository> analyticsRepositoryProvider = Provider<Analy
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository _authRepository;
   final Ref _ref;
+  bool _isRegisteringToken = false;
 
   AuthNotifier(this._authRepository, this._ref) : super(const AsyncValue.data(null)) {
     _loadCachedUser();
@@ -360,6 +361,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   }
 
   Future<void> _registerFCMToken() async {
+    if (_isRegisteringToken) return;
+    _isRegisteringToken = true;
     try {
       final storage = _authRepository.storage;
       String? deviceId = await storage.read(key: 'device_id');
@@ -391,6 +394,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       }
     } catch (e) {
       print("Error registering FCM token: $e");
+    } finally {
+      _isRegisteringToken = false;
     }
   }
 }

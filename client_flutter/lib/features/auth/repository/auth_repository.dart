@@ -28,6 +28,9 @@ class AuthRepository {
         final userJson = data['user'] as Map<String, dynamic>;
         
         final user = UserModel.fromJson(userJson);
+        ApiClient.userId = user.id;
+        ApiClient.userRole = user.role;
+        ApiClient.username = user.username;
 
         // Save token & user metadata
         await storage.write(key: 'access_token', value: token);
@@ -68,6 +71,9 @@ class AuthRepository {
     } finally {
       token = null;
       ApiClient.accessToken = null;
+      ApiClient.userId = null;
+      ApiClient.userRole = null;
+      ApiClient.username = null;
       // Clear secure tokens
       await storage.delete(key: 'access_token');
       await storage.delete(key: 'user_role');
@@ -102,7 +108,11 @@ class AuthRepository {
         limit: 1,
       );
       if (maps.isNotEmpty) {
-        return UserModel.fromJson(maps.first);
+        final user = UserModel.fromJson(maps.first);
+        ApiClient.userId = user.id;
+        ApiClient.userRole = user.role;
+        ApiClient.username = user.username;
+        return user;
       }
     } catch (e) {
       print("Get cached user error: $e");

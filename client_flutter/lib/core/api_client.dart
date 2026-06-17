@@ -7,8 +7,11 @@ class ApiClient {
   final storage = const FlutterSecureStorage();
   void Function(String reason, Map<String, dynamic> details)? onUnauthorized;
 
-  // Static token cache to avoid slow secure storage reads and race conditions
+  // Static cache to avoid slow secure storage reads and race conditions
   static String? accessToken;
+  static String? userId;
+  static String? userRole;
+  static String? username;
 
   // Primary API endpoint config
   static const String apiBaseUrl = String.fromEnvironment(

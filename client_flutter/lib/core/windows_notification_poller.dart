@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:client_flutter/core/providers.dart';
 import 'package:client_flutter/core/system_notification_service.dart';
+import 'package:client_flutter/core/api_client.dart';
 
 class WindowsNotificationPoller {
   final Ref ref;
@@ -45,7 +46,7 @@ class WindowsNotificationPoller {
 
   Future<void> _pollNotifications() async {
     final user = ref.read(authStateProvider).value;
-    if (user == null) {
+    if (ApiClient.accessToken == null || user == null) {
       // User logged out, stop polling
       stop();
       return;
