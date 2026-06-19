@@ -31,7 +31,7 @@ def get_contact(contact_id):
     return jsonify(contact.to_dict()), 200
 
 @contacts_bp.route('', methods=['POST'])
-@role_required('ADMIN', 'BOSS', 'MANAGER')
+@role_required('ADMIN', 'BOSS')
 def create_contact():
     import uuid
     role, user_id = get_current_user_role_and_id()
@@ -77,7 +77,7 @@ def create_contact():
     return jsonify(contact.to_dict()), 201
 
 @contacts_bp.route('/<uuid:contact_id>', methods=['PUT'])
-@role_required('ADMIN', 'BOSS', 'MANAGER')
+@role_required('ADMIN', 'BOSS')
 def update_contact(contact_id):
     import uuid
     role, user_id = get_current_user_role_and_id()
@@ -130,7 +130,7 @@ def update_contact(contact_id):
     return jsonify(contact.to_dict()), 200
 
 @contacts_bp.route('/<uuid:contact_id>', methods=['DELETE'])
-@role_required('ADMIN', 'BOSS', 'MANAGER')
+@role_required('ADMIN', 'BOSS')
 def delete_contact(contact_id):
     role, user_id = get_current_user_role_and_id()
     contact = Contact.query.get_or_404(contact_id)

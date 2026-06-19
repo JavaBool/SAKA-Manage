@@ -232,6 +232,43 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
 
       if (!mounted) return;
 
+      // Fetch active managers
+      List<Map<String, dynamic>> managers = [];
+      try {
+        final response = await ref.read(apiClientProvider).get('/users');
+        if (response.statusCode == 200) {
+          final List<dynamic> users = response.data as List;
+          managers = users
+              .where((u) => u['role'] == 'MANAGER' && u['active'] == true)
+              .map((u) => {
+                    'id': u['id'] as String,
+                    'username': u['username'] as String,
+                  })
+              .toList();
+        }
+      } catch (e) {
+        print("Error fetching managers for CSV import: $e");
+      }
+
+      if (!mounted) return;
+
+      // Show CsvDraftMenuDialog
+      final finalizedDrafts = await showDialog<List<Map<String, String>>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => CsvDraftMenuDialog(
+          draftContacts: contactsToImport,
+          managers: managers,
+          existingContacts: existingContacts,
+        ),
+      );
+
+      if (finalizedDrafts == null || finalizedDrafts.isEmpty) {
+        return; // Canceled or empty draft
+      }
+
+      if (!mounted) return;
+
       int importedCount = 0;
       
       showDialog(
@@ -255,7 +292,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
       );
 
       try {
-        for (var contact in contactsToImport) {
+        for (var contact in finalizedDrafts) {
           final String name = contact['name']!;
           final String lowerName = name.trim().toLowerCase();
 
@@ -305,7 +342,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                 'email': contact['email']?.isNotEmpty == true ? contact['email'] : (existing.email ?? ''),
                 'website': contact['website']?.isNotEmpty == true ? contact['website'] : (existing.website ?? ''),
                 'address': contact['address']?.isNotEmpty == true ? contact['address'] : (existing.address ?? ''),
-                'assigned_manager_id': existing.assignedManagerId,
+                'assigned_manager_id': contact['assigned_manager_id'] ?? existing.assignedManagerId,
               };
               await ref.read(contactsRepositoryProvider).updateContact(existing.id, payload);
             } else if (action == ConflictResolution.rename) {
@@ -318,6 +355,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                 'email': contact['email']?.isNotEmpty == true ? contact['email'] : null,
                 'website': contact['website']?.isNotEmpty == true ? contact['website'] : null,
                 'address': contact['address']?.isNotEmpty == true ? contact['address'] : null,
+                'assigned_manager_id': contact['assigned_manager_id'],
               };
               await ref.read(contactsRepositoryProvider).createContact(payload);
               existingContacts[newName.trim().toLowerCase()] = ContactModel(
@@ -329,6 +367,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                 email: payload['email'],
                 website: payload['website'],
                 address: payload['address'],
+                assignedManagerId: payload['assigned_manager_id'],
               );
             }
           } else {
@@ -340,6 +379,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
               'email': contact['email']?.isNotEmpty == true ? contact['email'] : null,
               'website': contact['website']?.isNotEmpty == true ? contact['website'] : null,
               'address': contact['address']?.isNotEmpty == true ? contact['address'] : null,
+              'assigned_manager_id': contact['assigned_manager_id'],
             };
             await ref.read(contactsRepositoryProvider).createContact(payload);
             existingContacts[lowerName] = ContactModel(
@@ -351,6 +391,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
               email: payload['email'],
               website: payload['website'],
               address: payload['address'],
+              assignedManagerId: payload['assigned_manager_id'],
             );
           }
           importedCount++;
@@ -642,7 +683,8 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authStateProvider).value;
-    final bool canCreate = currentUser != null;
+    final bool isBossOrAdmin = currentUser != null && (currentUser.role == 'BOSS' || currentUser.role == 'ADMIN');
+    final bool canCreate = isBossOrAdmin;
 
     final bool isMobile = MediaQuery.of(context).size.width < 768;
 
@@ -676,30 +718,31 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                       ),
                       const SizedBox(height: 8),
                       const Text("List of contacts and organizations assigned to you.", style: TextStyle(color: AppTheme.textMuted)),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _importCsv,
-                              icon: const Icon(Icons.upload_file, size: 18),
-                              label: const Text("Import CSV"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.darkCard,
-                                foregroundColor: AppTheme.textMain,
-                                side: const BorderSide(color: AppTheme.borderColor),
-                                minimumSize: const Size(double.infinity, 48),
+                      if (isBossOrAdmin) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _importCsv,
+                                icon: const Icon(Icons.upload_file, size: 18),
+                                label: const Text("Import CSV"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.darkCard,
+                                  foregroundColor: AppTheme.textMain,
+                                  side: const BorderSide(color: AppTheme.borderColor),
+                                  minimumSize: const Size(double.infinity, 48),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.info_outline, color: AppTheme.primary),
-                            tooltip: 'CSV Import Guide',
-                            onPressed: _showCsvInfoDialog,
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.info_outline, color: AppTheme.primary),
+                              tooltip: 'CSV Import Guide',
+                              onPressed: _showCsvInfoDialog,
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   )
                 : Row(
@@ -717,23 +760,25 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                       ),
                       Row(
                         children: [
-                          ElevatedButton.icon(
-                            onPressed: _importCsv,
-                            icon: const Icon(Icons.upload_file, size: 18),
-                            label: const Text("Import CSV"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.darkCard,
-                              foregroundColor: AppTheme.textMain,
-                              side: const BorderSide(color: AppTheme.borderColor),
+                          if (isBossOrAdmin) ...[
+                            ElevatedButton.icon(
+                              onPressed: _importCsv,
+                              icon: const Icon(Icons.upload_file, size: 18),
+                              label: const Text("Import CSV"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.darkCard,
+                                foregroundColor: AppTheme.textMain,
+                                side: const BorderSide(color: AppTheme.borderColor),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.info_outline, color: AppTheme.primary),
-                            tooltip: 'CSV Import Guide',
-                            onPressed: _showCsvInfoDialog,
-                          ),
-                          const SizedBox(width: 12),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.info_outline, color: AppTheme.primary),
+                              tooltip: 'CSV Import Guide',
+                              onPressed: _showCsvInfoDialog,
+                            ),
+                            const SizedBox(width: 12),
+                          ],
                           IconButton(
                             icon: const Icon(Icons.refresh, color: AppTheme.primary),
                             onPressed: _refreshContacts,
@@ -787,10 +832,7 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final contact = filtered[index];
-                      final bool canManage = currentUser != null &&
-                          (currentUser.role == 'BOSS' ||
-                              currentUser.role == 'ADMIN' ||
-                              (currentUser.role == 'MANAGER' && contact.assignedManagerId == currentUser.id));
+                      final bool canManage = isBossOrAdmin;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -1066,6 +1108,323 @@ class _ConflictResolutionDialogState extends State<ConflictResolutionDialog> {
           child: const Text('Update Details'),
         ),
       ],
+    );
+  }
+}
+
+class CsvDraftMenuDialog extends StatefulWidget {
+  final List<Map<String, String>> draftContacts;
+  final List<Map<String, dynamic>> managers;
+  final Map<String, ContactModel> existingContacts;
+
+  const CsvDraftMenuDialog({
+    super.key,
+    required this.draftContacts,
+    required this.managers,
+    required this.existingContacts,
+  });
+
+  @override
+  State<CsvDraftMenuDialog> createState() => _CsvDraftMenuDialogState();
+}
+
+class _CsvDraftMenuDialogState extends State<CsvDraftMenuDialog> {
+  late List<Map<String, String>> _drafts;
+  String? _globalManagerId;
+
+  @override
+  void initState() {
+    super.initState();
+    _drafts = widget.draftContacts.map((c) => Map<String, String>.from(c)).toList();
+  }
+
+  void _applyGlobalAssignment(String? managerId) {
+    setState(() {
+      _globalManagerId = managerId;
+      for (var draft in _drafts) {
+        if (managerId == null) {
+          draft.remove('assigned_manager_id');
+        } else {
+          draft['assigned_manager_id'] = managerId;
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double dialogWidth = MediaQuery.of(context).size.width * 0.85;
+    final double dialogHeight = MediaQuery.of(context).size.height * 0.8;
+
+    return Dialog(
+      backgroundColor: AppTheme.darkCard,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: dialogWidth.clamp(320.0, 960.0),
+        height: dialogHeight.clamp(400.0, 800.0),
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "CSV Draft Import Preview",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textMain,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Review parsed contacts and assign them to managers before importing.",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    "${_drafts.length} Contacts",
+                    style: const TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 32, color: AppTheme.borderColor),
+            Row(
+              children: [
+                const Icon(Icons.assignment_ind_outlined, color: AppTheme.secondary, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  "Quick Assign All to:",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: AppTheme.textMain,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkInput,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.borderColor),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _globalManagerId,
+                        hint: const Text("Select Manager", style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                        dropdownColor: AppTheme.darkCard,
+                        style: const TextStyle(color: AppTheme.textMain, fontSize: 14),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text("Unassigned", style: TextStyle(color: AppTheme.textMuted)),
+                          ),
+                          ...widget.managers.map((mgr) => DropdownMenuItem<String>(
+                                value: mgr['id'] as String,
+                                child: Text(mgr['username'] as String),
+                              )),
+                        ],
+                        onChanged: (val) {
+                          _applyGlobalAssignment(val);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _drafts.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No contacts in draft. All removed.",
+                        style: TextStyle(color: AppTheme.textMuted),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _drafts.length,
+                      itemBuilder: (context, index) {
+                        final draft = _drafts[index];
+                        final String name = draft['name'] ?? '';
+                        final bool isDuplicate = widget.existingContacts.containsKey(name.trim().toLowerCase());
+                        final String? selectedMgrId = draft['assigned_manager_id'];
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          color: AppTheme.darkInput,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: isDuplicate ? AppTheme.warning.withOpacity(0.5) : AppTheme.borderColor,
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: AppTheme.textMain,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isDuplicate) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.warning.withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: AppTheme.warning.withOpacity(0.5)),
+                                              ),
+                                              child: const Text(
+                                                "Duplicate",
+                                                style: TextStyle(
+                                                  color: AppTheme.warning,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "${draft['designation']?.isNotEmpty == true ? draft['designation'] : 'Representative'} at ${draft['company']?.isNotEmpty == true ? draft['company'] : 'Individual'}",
+                                        style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                                      ),
+                                      if (draft['email']?.isNotEmpty == true || draft['phone']?.isNotEmpty == true) ...[
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          [draft['phone'], draft['email']].where((e) => e != null && e.isNotEmpty).join(" | "),
+                                          style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.darkCard,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: AppTheme.borderColor),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        value: selectedMgrId,
+                                        hint: const Text(
+                                          "Unassigned",
+                                          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                                        ),
+                                        dropdownColor: AppTheme.darkCard,
+                                        style: const TextStyle(color: AppTheme.textMain, fontSize: 12),
+                                        items: [
+                                          const DropdownMenuItem<String>(
+                                            value: null,
+                                            child: Text("Unassigned", style: TextStyle(color: AppTheme.textMuted)),
+                                          ),
+                                          ...widget.managers.map((mgr) => DropdownMenuItem<String>(
+                                                value: mgr['id'] as String,
+                                                child: Text(mgr['username'] as String),
+                                              )),
+                                        ],
+                                        onChanged: (val) {
+                                          setState(() {
+                                            if (val == null) {
+                                              draft.remove('assigned_manager_id');
+                                            } else {
+                                              draft['assigned_manager_id'] = val;
+                                            }
+                                            final firstMgr = _drafts.isEmpty ? null : _drafts.first['assigned_manager_id'];
+                                            final allSame = _drafts.every((d) => d['assigned_manager_id'] == firstMgr);
+                                            _globalManagerId = allSame ? firstMgr : null;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
+                                  tooltip: 'Remove from draft',
+                                  onPressed: () {
+                                    setState(() {
+                                      _drafts.removeAt(index);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context, null),
+                  child: const Text("Cancel"),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _drafts.isEmpty
+                      ? null
+                      : () {
+                          Navigator.pop(context, _drafts);
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                  ),
+                  child: Text("Import ${_drafts.length} Contacts"),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

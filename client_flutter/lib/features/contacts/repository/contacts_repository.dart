@@ -40,7 +40,16 @@ class ContactsRepository {
 
   Future<List<ContactModel>> _getCachedContacts() async {
     final db = await DbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query('contacts');
+    final List<Map<String, dynamic>> maps;
+    if (ApiClient.userRole == 'MANAGER') {
+      maps = await db.query(
+        'contacts',
+        where: 'assigned_manager_id = ?',
+        whereArgs: [ApiClient.userId],
+      );
+    } else {
+      maps = await db.query('contacts');
+    }
     return maps.map((json) => ContactModel.fromJson(json)).toList();
   }
 
@@ -62,12 +71,22 @@ class ContactsRepository {
     }
 
     final db = await DbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'contacts',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
+    final List<Map<String, dynamic>> maps;
+    if (ApiClient.userRole == 'MANAGER') {
+      maps = await db.query(
+        'contacts',
+        where: 'id = ? AND assigned_manager_id = ?',
+        whereArgs: [id, ApiClient.userId],
+        limit: 1,
+      );
+    } else {
+      maps = await db.query(
+        'contacts',
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+    }
     if (maps.isNotEmpty) {
       return ContactModel.fromJson(maps.first);
     }
