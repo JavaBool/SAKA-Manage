@@ -443,6 +443,48 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
     }
   }
 
+  Future<void> _launchPhone(String phoneNumber) async {
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    if (cleanPhone.isEmpty) return;
+    final Uri uri = Uri(scheme: 'tel', path: cleanPhone);
+    try {
+      if (!await launchUrl(uri)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open phone dialer for $phoneNumber')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error launching phone dialer: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _launchEmail(String email) async {
+    final cleanEmail = email.trim();
+    if (cleanEmail.isEmpty) return;
+    final Uri uri = Uri(scheme: 'mailto', path: cleanEmail);
+    try {
+      if (!await launchUrl(uri)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open email app for $email')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error launching email app: $e')),
+        );
+      }
+    }
+  }
+
   String _displayUrl(String url) {
     // Strip http://, https://, and www. to make the display cleaner
     var display = url.replaceFirst(RegExp(r'^https?://'), '');
@@ -869,35 +911,49 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                       const SizedBox(height: 8),
                                       const Divider(height: 12, color: AppTheme.borderColor),
                                       if (contact.phone != null)
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 4),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.phone, size: 12, color: AppTheme.textMuted),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Text(
-                                                  contact.phone!,
-                                                  style: const TextStyle(fontSize: 12, color: AppTheme.textMain),
+                                        InkWell(
+                                          onTap: () => _launchPhone(contact.phone!),
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(bottom: 4),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.phone, size: 12, color: AppTheme.textMuted),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    contact.phone!,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: AppTheme.textMain,
+                                                      decoration: TextDecoration.underline,
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       if (contact.email != null)
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 4),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.email, size: 12, color: AppTheme.textMuted),
-                                              const SizedBox(width: 6),
-                                              Expanded(
-                                                child: Text(
-                                                  contact.email!,
-                                                  style: const TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                                        InkWell(
+                                          onTap: () => _launchEmail(contact.email!),
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(bottom: 4),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.email, size: 12, color: AppTheme.textMuted),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    contact.email!,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color: AppTheme.textMuted,
+                                                      decoration: TextDecoration.underline,
+                                                    ),
+                                                  ),
                                                 ),
-                                              ),
-                                            ],
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       if (contact.website != null && contact.website!.isNotEmpty)
@@ -930,9 +986,29 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     if (contact.phone != null)
-                                      Text(contact.phone!, style: const TextStyle(fontSize: 12, color: AppTheme.textMain)),
+                                      InkWell(
+                                        onTap: () => _launchPhone(contact.phone!),
+                                        child: Text(
+                                          contact.phone!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textMain,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
                                     if (contact.email != null)
-                                      Text(contact.email!, style: const TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                                      InkWell(
+                                        onTap: () => _launchEmail(contact.email!),
+                                        child: Text(
+                                          contact.email!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textMuted,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
                                     if (contact.website != null && contact.website!.isNotEmpty) ...[
                                       const SizedBox(height: 4),
                                       InkWell(
