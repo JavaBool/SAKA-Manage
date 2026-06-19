@@ -33,7 +33,7 @@ class DbHelper {
   }
 
   static Future<void> _onConfigure(Database db) async {
-    await db.execute('PRAGMA journal_mode=WAL;');
+    await db.rawQuery('PRAGMA journal_mode=WAL');
   }
   
   static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
