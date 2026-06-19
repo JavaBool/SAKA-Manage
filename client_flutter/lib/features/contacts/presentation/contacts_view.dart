@@ -18,17 +18,357 @@ class ContactsView extends ConsumerStatefulWidget {
 class _ContactsViewState extends ConsumerState<ContactsView> {
   String _searchQuery = "";
   late Future<List<ContactModel>> _contactsFuture;
+  final Set<String> _selectedContactIds = {};
+  List<Map<String, dynamic>> _managers = [];
+  Map<String, String> _managerNames = {};
 
   @override
   void initState() {
     super.initState();
     _refreshContacts();
+    _fetchManagers();
   }
 
   void _refreshContacts() {
     setState(() {
       _contactsFuture = ref.read(contactsRepositoryProvider).getContacts();
+      _selectedContactIds.clear();
     });
+    _fetchManagers();
+  }
+
+  Future<void> _fetchManagers() async {
+    final currentUser = ref.read(authStateProvider).value;
+    final bool isBossOrAdmin = currentUser != null && (currentUser.role == 'BOSS' || currentUser.role == 'ADMIN');
+    if (isBossOrAdmin) {
+      try {
+        final response = await ref.read(apiClientProvider).get('/users');
+        if (response.statusCode == 200) {
+          final List<dynamic> users = response.data as List;
+          final managers = users
+              .where((u) => u['role'] == 'MANAGER' && u['active'] == true)
+              .map((u) => {
+                    'id': u['id'] as String,
+                    'username': u['username'] as String,
+                  })
+              .toList();
+          if (mounted) {
+            setState(() {
+              _managers = managers;
+              _managerNames = {
+                for (var mgr in managers) mgr['id'] as String: mgr['username'] as String
+              };
+            });
+          }
+        }
+      } catch (e) {
+        print("Error fetching managers: $e");
+      }
+    }
+  }
+
+  Widget _buildManagerBadge(String? managerId) {
+    final String? managerName = managerId != null ? _managerNames[managerId] : null;
+    if (managerName != null) {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.assignment_ind, size: 12, color: AppTheme.primary),
+            const SizedBox(width: 4),
+            Text(
+              "Manager: $managerName",
+              style: const TextStyle(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppTheme.textMuted.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: AppTheme.textMuted.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.person_outline, size: 12, color: AppTheme.textMuted),
+            const SizedBox(width: 4),
+            const Text(
+              "Unassigned",
+              style: TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildBulkActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_outline, color: AppTheme.primary, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            "${_selectedContactIds.length} Selected",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.textMain,
+              fontSize: 14,
+            ),
+          ),
+          const Spacer(),
+          TextButton.icon(
+            onPressed: _showBulkAssignDialog,
+            icon: const Icon(Icons.assignment_ind, size: 16, color: AppTheme.primary),
+            label: const Text(
+              "Assign",
+              style: TextStyle(color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              backgroundColor: AppTheme.primary.withOpacity(0.08),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: _confirmBulkDelete,
+            icon: const Icon(Icons.delete_outline, size: 16, color: AppTheme.danger),
+            label: const Text(
+              "Delete",
+              style: TextStyle(color: AppTheme.danger, fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              backgroundColor: AppTheme.danger.withOpacity(0.08),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: AppTheme.textMuted),
+            onPressed: () {
+              setState(() {
+                _selectedContactIds.clear();
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBulkAssignDialog() {
+    String? selectedManagerId;
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppTheme.darkCard,
+              title: const Text("Bulk Assign Manager", style: TextStyle(color: AppTheme.textMain)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Assign the ${_selectedContactIds.length} selected contacts to:",
+                    style: const TextStyle(color: AppTheme.textMuted),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkInput,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.borderColor),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedManagerId,
+                        hint: const Text("Unassigned (Clear)", style: TextStyle(color: AppTheme.textMuted)),
+                        dropdownColor: AppTheme.darkCard,
+                        style: const TextStyle(color: AppTheme.textMain),
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: null,
+                            child: Text("Unassigned (Clear)"),
+                          ),
+                          ..._managers.map((mgr) => DropdownMenuItem<String>(
+                                value: mgr['id'] as String,
+                                child: Text(mgr['username'] as String),
+                              )),
+                        ],
+                        onChanged: (val) {
+                          setDialogState(() {
+                            selectedManagerId = val;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _performBulkAssign(selectedManagerId);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
+                  child: const Text("Assign"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _performBulkAssign(String? managerId) async {
+    _showLoadingOverlay("Assigning manager...");
+    int successCount = 0;
+    int failCount = 0;
+
+    try {
+      for (var contactId in _selectedContactIds) {
+        try {
+          final success = await ref.read(contactsRepositoryProvider).updateContact(
+            contactId,
+            {'assigned_manager_id': managerId},
+          );
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (e) {
+          failCount++;
+        }
+      }
+    } finally {
+      if (mounted) Navigator.pop(context);
+    }
+
+    _refreshContacts();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Successfully assigned manager for $successCount contacts." +
+            (failCount > 0 ? " Failed for $failCount contacts." : ""),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _confirmBulkDelete() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.darkCard,
+        title: const Text("Confirm Bulk Delete", style: TextStyle(color: AppTheme.textMain)),
+        content: Text(
+          "Are you sure you want to delete the ${_selectedContactIds.length} selected contacts? This action cannot be undone.",
+          style: const TextStyle(color: AppTheme.textMuted),
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _performBulkDelete();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            child: const Text("Delete", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performBulkDelete() async {
+    _showLoadingOverlay("Deleting contacts...");
+    int successCount = 0;
+    int failCount = 0;
+
+    try {
+      for (var contactId in _selectedContactIds) {
+        try {
+          final success = await ref.read(contactsRepositoryProvider).deleteContact(contactId);
+          if (success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (e) {
+          failCount++;
+        }
+      }
+    } finally {
+      if (mounted) Navigator.pop(context);
+    }
+
+    _refreshContacts();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Successfully deleted $successCount contacts." +
+            (failCount > 0 ? " Failed for $failCount contacts." : ""),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showLoadingOverlay(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(message, style: const TextStyle(color: AppTheme.textMain)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   List<List<String>> parseCSV(String text) {
@@ -843,6 +1183,10 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
               },
             ),
             const SizedBox(height: 20),
+            if (isBossOrAdmin && _selectedContactIds.isNotEmpty) ...[
+              _buildBulkActionBar(),
+              const SizedBox(height: 16),
+            ],
             // Table/List
             Expanded(
               child: FutureBuilder<List<ContactModel>>(
@@ -882,6 +1226,22 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
                             children: [
+                              if (isBossOrAdmin) ...[
+                                Checkbox(
+                                  value: _selectedContactIds.contains(contact.id),
+                                  activeColor: AppTheme.primary,
+                                  onChanged: (bool? checked) {
+                                    setState(() {
+                                      if (checked == true) {
+                                        _selectedContactIds.add(contact.id);
+                                      } else {
+                                        _selectedContactIds.remove(contact.id);
+                                      }
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                              ],
                               CircleAvatar(
                                 backgroundColor: AppTheme.primary.withOpacity(0.12),
                                 child: const Icon(Icons.person, color: AppTheme.primary),
@@ -906,6 +1266,9 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                                         contact.address!,
                                         style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
                                       ),
+                                    ],
+                                    if (isBossOrAdmin) ...[
+                                      _buildManagerBadge(contact.assignedManagerId),
                                     ],
                                     if (isMobile) ...[
                                       const SizedBox(height: 8),
