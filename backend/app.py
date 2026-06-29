@@ -42,8 +42,12 @@ with app.app_context():
         inspector = db.inspect(db.engine)
         tables = inspector.get_table_names()
         
-        if not tables:
-            print("Database is empty. Running all migrations to initialize...", flush=True)
+        if not tables or 'users' not in tables:
+            print("Database is empty or missing core tables. Forcing a clean migration upgrade...", flush=True)
+            if 'alembic_version' in tables:
+                import sqlalchemy as sa
+                db.session.execute(sa.text("DROP TABLE alembic_version"))
+                db.session.commit()
             upgrade()
         else:
             if 'alembic_version' not in tables and 'users' in tables:
