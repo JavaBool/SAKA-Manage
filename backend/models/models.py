@@ -48,9 +48,9 @@ class Contact(db.Model):
     __tablename__ = 'contacts'
     
     id = db.Column(db.Uuid, primary_key=True, default=uuid.uuid4)
-    name = db.Column(db.String(100), nullable=False)
-    company = db.Column(db.String(100), nullable=True)
-    designation = db.Column(db.String(100), nullable=True)
+    name = db.Column(db.String(255), nullable=False)
+    company = db.Column(db.String(255), nullable=True)
+    designation = db.Column(db.String(255), nullable=True)
     phone = db.Column(db.String(20), nullable=True)
     email = db.Column(db.String(120), nullable=True)
     address = db.Column(db.Text, nullable=True)
