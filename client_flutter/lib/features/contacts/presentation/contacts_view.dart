@@ -537,18 +537,23 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
       }
 
       final List<Map<String, String>> contactsToImport = [];
+      String truncateString(String value, int maxLength) {
+        final trimmed = value.trim();
+        return trimmed.length > maxLength ? trimmed.substring(0, maxLength) : trimmed;
+      }
+
       for (int i = 1; i < lines.length; i++) {
         final values = lines[i];
         if (values.length < headers.length) continue;
 
         final Map<String, String> contact = {};
-        if (mapping['name'] != null) contact['name'] = values[mapping['name']!].trim();
-        if (mapping['company'] != null) contact['company'] = values[mapping['company']!].trim();
-        if (mapping['designation'] != null) contact['designation'] = values[mapping['designation']!].trim();
-        if (mapping['phone'] != null) contact['phone'] = values[mapping['phone']!].trim();
-        if (mapping['email'] != null) contact['email'] = values[mapping['email']!].trim();
-        if (mapping['website'] != null) contact['website'] = values[mapping['website']!].trim();
-        if (mapping['address'] != null) contact['address'] = values[mapping['address']!].trim();
+        if (mapping['name'] != null) contact['name'] = truncateString(values[mapping['name']!], 255);
+        if (mapping['company'] != null) contact['company'] = truncateString(values[mapping['company']!], 255);
+        if (mapping['designation'] != null) contact['designation'] = truncateString(values[mapping['designation']!], 255);
+        if (mapping['phone'] != null) contact['phone'] = truncateString(values[mapping['phone']!], 20);
+        if (mapping['email'] != null) contact['email'] = truncateString(values[mapping['email']!], 120);
+        if (mapping['website'] != null) contact['website'] = truncateString(values[mapping['website']!], 255);
+        if (mapping['address'] != null) contact['address'] = truncateString(values[mapping['address']!], 1000);
 
         if (contact['name'] != null && contact['name']!.isNotEmpty) {
           contactsToImport.add(contact);
@@ -888,44 +893,79 @@ class _ContactsViewState extends ConsumerState<ContactsView> {
                       TextField(
                         controller: nameController,
                         style: const TextStyle(color: AppTheme.textMain),
-                        decoration: const InputDecoration(labelText: 'Name *', labelStyle: TextStyle(color: AppTheme.textMuted)),
+                        maxLength: 255,
+                        decoration: const InputDecoration(
+                          labelText: 'Name *',
+                          labelStyle: TextStyle(color: AppTheme.textMuted),
+                          counterText: "",
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: companyController,
                         style: const TextStyle(color: AppTheme.textMain),
-                        decoration: const InputDecoration(labelText: 'Company', labelStyle: TextStyle(color: AppTheme.textMuted)),
+                        maxLength: 255,
+                        decoration: const InputDecoration(
+                          labelText: 'Company',
+                          labelStyle: TextStyle(color: AppTheme.textMuted),
+                          counterText: "",
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: designationController,
                         style: const TextStyle(color: AppTheme.textMain),
-                        decoration: const InputDecoration(labelText: 'Designation', labelStyle: TextStyle(color: AppTheme.textMuted)),
+                        maxLength: 255,
+                        decoration: const InputDecoration(
+                          labelText: 'Designation',
+                          labelStyle: TextStyle(color: AppTheme.textMuted),
+                          counterText: "",
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: phoneController,
                         style: const TextStyle(color: AppTheme.textMain),
-                        decoration: const InputDecoration(labelText: 'Phone', labelStyle: TextStyle(color: AppTheme.textMuted)),
+                        maxLength: 20,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone',
+                          labelStyle: TextStyle(color: AppTheme.textMuted),
+                          counterText: "",
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: emailController,
                         style: const TextStyle(color: AppTheme.textMain),
-                        decoration: const InputDecoration(labelText: 'Email', labelStyle: TextStyle(color: AppTheme.textMuted)),
+                        maxLength: 120,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          labelStyle: TextStyle(color: AppTheme.textMuted),
+                          counterText: "",
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: websiteController,
                         style: const TextStyle(color: AppTheme.textMain),
-                        decoration: const InputDecoration(labelText: 'Website', labelStyle: TextStyle(color: AppTheme.textMuted)),
+                        maxLength: 255,
+                        decoration: const InputDecoration(
+                          labelText: 'Website',
+                          labelStyle: TextStyle(color: AppTheme.textMuted),
+                          counterText: "",
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: addressController,
                         style: const TextStyle(color: AppTheme.textMain),
                         maxLines: 2,
-                        decoration: const InputDecoration(labelText: 'Address', labelStyle: TextStyle(color: AppTheme.textMuted)),
+                        maxLength: 1000,
+                        decoration: const InputDecoration(
+                          labelText: 'Address',
+                          labelStyle: TextStyle(color: AppTheme.textMuted),
+                          counterText: "",
+                        ),
                       ),
                       if (showManagerSelector) ...[
                         const SizedBox(height: 16),
